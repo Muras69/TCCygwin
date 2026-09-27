@@ -136,6 +136,7 @@ static void block(int flags);
 static void gen_cast(CType *type);
 static void gen_cast_s(int t);
 static inline CType *pointed_type(CType *type);
+static void check_restrict_type(CType *type);
 static int type_qualifiers(CType *type);
 static void parse_btype_qualify(CType *type, int qualifiers);
 static int is_compatible_types(CType *type1, CType *type2);
@@ -2677,6 +2678,8 @@ static void type_to_str(char *buf, int buf_size,
     if (t & VT_INLINE)
         pstrcat(buf, buf_size, "inline ");
     if (bt != VT_PTR) {
+        if (t & VT_RESTRICT)
+            pstrcat(buf, buf_size, "restrict ");
         if (t & VT_VOLATILE)
             pstrcat(buf, buf_size, "volatile ");
         if (t & VT_CONSTANT)
@@ -2749,7 +2752,7 @@ static void type_to_str(char *buf, int buf_size,
             pstrcat(buf1, sizeof(buf1), varstr);
             pstrcat(buf1, sizeof(buf1), ")");
         }
-        pstrcat(buf1, buf_size, "(");
+        pstrcat(buf1, sizeof(buf1), "(");
         sa = s->next;
         while (sa != NULL) {
             char buf2[256];
@@ -2775,10 +2778,12 @@ static void type_to_str(char *buf, int buf_size,
             goto no_var;
         }
         pstrcpy(buf1, sizeof(buf1), "*");
+        if (t & VT_RESTRICT)
+            pstrcat(buf1, sizeof(buf1), "restrict ");
         if (t & VT_CONSTANT)
-            pstrcat(buf1, buf_size, "const ");
+            pstrcat(buf1, sizeof(buf1), "const ");
         if (t & VT_VOLATILE)
-            pstrcat(buf1, buf_size, "volatile ");
+            pstrcat(buf1, sizeof(buf1), "volatile ");
         if (varstr)
             pstrcat(buf1, sizeof(buf1), varstr);
         type_to_str(buf, buf_size, &s->type, buf1);
@@ -2822,7 +2827,7 @@ static inline int is_null_pointer(SValue *p)
         ((p->type.t & VT_BTYPE) == VT_PTR &&
          (PTR_SIZE == 4 ? (uint32_t)p->c.i == 0 : p->c.i == 0) &&
          ((pointed_type(&p->type)->t & VT_BTYPE) == VT_VOID) &&
-         0 == (pointed_type(&p->type)->t & (VT_CONSTANT | VT_VOLATILE))
+         0 == (pointed_type(&p->type)->t & VT_QUAL)
          );
 }
 
@@ -2871,8 +2876,8 @@ static int compare_types(CType *type1, CType *type2, int unqualified)
     t2 = type2->t & VT_TYPE;
     if (unqualified) {
         /* strip qualifiers before comparing */
-        t1 &= ~(VT_CONSTANT | VT_VOLATILE);
-        t2 &= ~(VT_CONSTANT | VT_VOLATILE);
+        t1 &= ~VT_QUAL;
+        t2 &= ~VT_QUAL;
     }
 
     /* Default Vs explicit signedness only matters for char */
@@ -3490,7 +3495,7 @@ error:
     }
 done:
     vtop->type = *type;
-    vtop->type.t &= ~ ( VT_CONSTANT | VT_VOLATILE | VT_ARRAY | VT_TLS );
+    vtop->type.t &= ~ ( VT_QUAL | VT_ARRAY | VT_TLS );
 }
 
 /* return type size as known at compile time. Put alignment at 'a' */
@@ -3568,12 +3573,24 @@ static inline CType *pointed_type(CType *type)
     return &type->ref->type;
 }
 
+static void check_restrict_type(CType *type)
+{
+    while ((type->t & VT_BTYPE) == VT_PTR) {
+        if ((type->t & VT_RESTRICT)
+            && (pointed_type(type)->t & VT_BTYPE) == VT_FUNC)
+            tcc_error("restrict-qualified type must be a pointer to object or incomplete type");
+        type = pointed_type(type);
+    }
+    if (type->t & VT_RESTRICT)
+        tcc_error("restrict-qualified type must be a pointer to object or incomplete type");
+}
+
 /* Array qualifiers are represented on the element type. */
 static int type_qualifiers(CType *type)
 {
     while (type->t & VT_ARRAY)
         type = pointed_type(type);
-    return type->t & (VT_CONSTANT | VT_VOLATILE);
+    return type->t & VT_QUAL;
 }
 
 /* modify type so that its it is a pointer to type. */
@@ -3641,8 +3658,7 @@ static void verify_assign_cast(CType *dt)
         if (is_compatible_types(type1, type2))
             break;
         for (qualwarn = lvl = 0;; ++lvl) {
-            if (((type2->t & VT_CONSTANT) && !(type1->t & VT_CONSTANT)) ||
-                ((type2->t & VT_VOLATILE) && !(type1->t & VT_VOLATILE)))
+            if ((type2->t & ~type1->t) & VT_QUAL)
                 qualwarn = 1;
             dbt = type1->t & (VT_BTYPE|VT_LONG);
             sbt = type2->t & (VT_BTYPE|VT_LONG);
@@ -4725,6 +4741,8 @@ static void parse_btype_qualify(CType *type, int qualifiers)
         type->ref = sym_push(SYM_FIELD, &type->ref->type, 0, type->ref->c);
         type = &type->ref->type;
     }
+    if (qualifiers & VT_RESTRICT)
+        check_restrict_type(type);
     type->t |= qualifiers;
 }
 
@@ -4883,11 +4901,14 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
             next();
             typespec_found = 1;
             break;
-        case TOK_REGISTER:
-        case TOK_AUTO:
         case TOK_RESTRICT1:
         case TOK_RESTRICT2:
         case TOK_RESTRICT3:
+            t |= VT_RESTRICT;
+            next();
+            break;
+        case TOK_REGISTER:
+        case TOK_AUTO:
             next();
             break;
         case TOK_UNSIGNED:
@@ -4969,7 +4990,7 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
             }
 
             t &= ~(VT_BTYPE|VT_LONG);
-            u = t & ~(VT_CONSTANT | VT_VOLATILE), t ^= u;
+            u = t & ~VT_QUAL, t ^= u;
             type->t = (s->type.t & ~VT_TYPEDEF) | u;
             type->ref = s->type.ref;
             if (t)
@@ -4999,6 +5020,7 @@ the_end:
         t = (t & ~(VT_BTYPE|VT_LONG)) | (VT_DOUBLE|VT_LONG);
 #endif
     type->t = t;
+    check_restrict_type(type);
     return type_found;
 }
 
@@ -5006,14 +5028,18 @@ the_end:
    function pointer) */
 static inline void convert_parameter_type(CType *pt)
 {
-    /* remove const and volatile qualifiers (XXX: const could be used
-       to indicate a const function parameter */
-    pt->t &= ~(VT_CONSTANT | VT_VOLATILE);
     /* array must be transformed to pointer according to ANSI C */
     pt->t &= ~(VT_ARRAY | VT_VLA);
     if ((pt->t & VT_BTYPE) == VT_FUNC) {
         mk_pointer(pt);
     }
+}
+
+/* apply the conversions required for an expression value */
+static inline void convert_expression_type(CType *pt)
+{
+    pt->t &= ~VT_QUAL;
+    convert_parameter_type(pt);
 }
 
 ST_FUNC CString* parse_asm_str(void)
@@ -5115,9 +5141,9 @@ static int post_type(CType *type, AttributeDef *ad, int storage, int td)
             /* if no parameters, then old type prototype */
             l = FUNC_OLD;
         skip(')');
-        /* NOTE: const is ignored in returned type as it has a special
-           meaning in gcc / C++ */
-        type->t &= ~VT_CONSTANT; 
+        /* A function return value has the unqualified version of its
+           declared type. */
+        type->t &= ~VT_QUAL;
         /* some ancient pre-K&R C allows a function to return an array
            and the array brackets to be put after the arguments, such 
            that "int c()[]" means something like "int[] c()" */
@@ -5140,6 +5166,7 @@ static int post_type(CType *type, AttributeDef *ad, int storage, int td)
 
     } else if (tok == '[') {
 	int saved_nocode_wanted = nocode_wanted;
+        int array_qualifiers = 0;
         /* array definition */
         next();
         n = -1;
@@ -5149,9 +5176,18 @@ static int post_type(CType *type, AttributeDef *ad, int storage, int td)
 	       in parameter decls.  The '*' as well, and then even only
 	       in prototypes (not function defs).  */
 	    switch (tok) {
+	    case TOK_CONST1: case TOK_CONST2: case TOK_CONST3:
+		array_qualifiers |= VT_CONSTANT;
+		next();
+		continue;
+	    case TOK_VOLATILE1: case TOK_VOLATILE2: case TOK_VOLATILE3:
+		array_qualifiers |= VT_VOLATILE;
+		next();
+		continue;
 	    case TOK_RESTRICT1: case TOK_RESTRICT2: case TOK_RESTRICT3:
-	    case TOK_CONST1:
-	    case TOK_VOLATILE1:
+		array_qualifiers |= VT_RESTRICT;
+		next();
+		continue;
 	    case TOK_STATIC:
 	    case '*':
 		next();
@@ -5236,6 +5272,7 @@ check:
         s = sym_push(SYM_FIELD, type, 0, n);
         type->t = (t1 ? VT_VLA : VT_ARRAY) | VT_PTR;
         type->ref = s;
+        type->t |= array_qualifiers;
 
         if (vla_array_str) {
             /* for function args, the top dimension is converted to pointer */
@@ -5286,6 +5323,7 @@ static CType *type_decl(CType *type, AttributeDef *ad, int *v, int td)
         case TOK_RESTRICT1:
         case TOK_RESTRICT2:
         case TOK_RESTRICT3:
+            qualifiers |= VT_RESTRICT;
             goto redo;
 	/* XXX: clarify attribute handling */
 	case TOK_ATTRIBUTE1:
@@ -5325,6 +5363,7 @@ static CType *type_decl(CType *type, AttributeDef *ad, int *v, int td)
     }
     post_type(post, ad, post != ret ? 0 : storage,
               td & ~(TYPE_DIRECT|TYPE_ABSTRACT));
+    check_restrict_type(type);
     parse_attribute(ad);
     type->t |= storage;
     return ret;
@@ -6063,7 +6102,7 @@ ST_FUNC void unary(void)
         next();
 	skip('(');
 	expr_type(&controlling_type, expr_eq);
-	convert_parameter_type (&controlling_type);
+	convert_expression_type(&controlling_type);
 
         nocode_wanted = saved_nocode_wanted;
 
@@ -6185,7 +6224,7 @@ special_math_val:
             /* field */ 
             if (tok == TOK_ARROW) 
                 indir();
-            qualifiers = vtop->type.t & (VT_CONSTANT | VT_VOLATILE);
+            qualifiers = vtop->type.t & VT_QUAL;
             test_lvalue();
             /* expect pointer on structure */
             next();
@@ -6774,7 +6813,7 @@ ST_FUNC void gexpr(void)
         } while (tok == ',');
 
         /* convert array & function to pointer */
-        convert_parameter_type(&vtop->type);
+        convert_expression_type(&vtop->type);
 
         /* make builtin_constant_p((1,2)) return 0 (like on gcc) */
         if ((vtop->r & VT_VALMASK) == VT_CONST && nocode_wanted && !CONST_WANTED)

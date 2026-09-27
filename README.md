@@ -25,13 +25,13 @@ For detailed language support, options, and limitations, see the compiler docume
 
 ## Packages
 
-Prebuilt compiler packages are available alongside the source package, **`TCCygwin-b1b8637`**.
+Prebuilt compiler packages are available alongside the source package, **`TCCygwin-eb47edc`**.
 
 | Package | Purpose |
 | :--- | :--- |
 | `x86_64-win32-tcc` | Original native Windows TCC build, ready to use as the bootstrap compiler. |
 | `TCCygwin-3.6.10-1` | Native Windows compiler targeting the Cygwin `3.6.10-1` runtime. |
-| `TCCygwin-3.7.0-0.605` | Native Windows compiler targeting the Cygwin `3.7.0-0.605` runtime. |
+| `TCCygwin-3.7.0-0.609` | Native Windows compiler targeting the Cygwin `3.7.0-0.609` runtime. |
 
 Each unpacked binary package is approximately **2 MB**. The Cygwin runtime is obtained separately; see [Runtime setup](#runtime-setup).
 
@@ -45,8 +45,8 @@ The compiler is implemented in **C with assembly components**, based on TinyCC, 
 | Development repository | [TinyCC on repo.or.cz](https://repo.or.cz/tinycc.git) |
 | Source branch | `mob` |
 | Working version | `0.9.28rc` |
-| Source tree identifier | `b1b863756f3dd24380ca24bbcfdc848673e1951a` |
-| Source package | `TCCygwin-b1b8637` |
+| Source tree identifier | `eb47edc4fc0a0641ab73a944b06e9ed1401027be` |
+| Source package | `TCCygwin-eb47edc` |
 | Build scripts | Windows batch (`.bat`) |
 
 These identifiers describe the source baseline used for this package.
@@ -55,7 +55,7 @@ These identifiers describe the source baseline used for this package.
 
 The source package includes an already-built native Windows bootstrap compiler.
 
-1. Extract `TCCygwin-b1b8637`.
+1. Extract `TCCygwin-eb47edc`.
 2. Open **Command Prompt** in the directory containing the build scripts.
 3. Run the main build script:
 
@@ -69,9 +69,9 @@ The source package also provides scripts for building the native Windows compile
 
 | Script | Purpose |
 | :--- | :--- |
-| `BUILD_TCC.bat` | Basic build of the native Windows TCC compiler. |
+| `BUILD_TCC.bat` | Basic build of the native Windows TCC compiler. (Do not use !!!) |
 | `BUILD_TCC_bootstrapping.bat` | Bootstrap build of the native Windows compiler; preferred over the basic build when building that compiler separately. |
-| **`BUILD_TCCygwin.bat`** | **Complete build: native compiler bootstrapping followed by both TCCygwin variants.** |
+| **`BUILD_TCCygwin.bat`** | **Complete build: native compiler bootstrapping followed by both TCCygwin variants. (Building using this script is recommended.)** |
 
 You only need to invoke the main script for the complete build; the table above is not a sequence of commands to run manually.
 
@@ -86,7 +86,7 @@ Select the runtime corresponding to your TCCygwin package:
 | Runtime | Kernel.org mirror | Checkdomain.de mirror |
 | :--- | :--- | :--- |
 | `3.6.10-1` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.6.10-1-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.6.10-1-x86_64.tar.xz) |
-| `3.7.0-0.605` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.605.g04f9e88ce783-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.605.g04f9e88ce783-x86_64.tar.xz) |
+| `3.7.0-0.609` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.609.ge8f50ec5b7f9-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.609.ge8f50ec5b7f9-x86_64.tar.xz) |
 
 Additional download locations are listed on the [Cygwin mirrors page](https://cygwin.com/mirrors.html). Availability of these specific archive versions may change over time.
 
@@ -128,7 +128,7 @@ To use a prebuilt package:
 
 The compiler is distributed under **GNU LGPL v2.1**. See [`COPYING-LGPLv21`](COPYING-LGPLv21) for the license text.
 
-Cygwin-related components have their own applicable licensing terms. These include `crt0.c`, `INCLUDE_3610100/`, and `INCLUDE_3700605/` within the `cygwin/` directory. Consult the relevant source notices and the accompanying license files:
+Cygwin-related components have their own applicable licensing terms. These include `crt0.c`, `INCLUDE_3610100/`, and `INCLUDE_3700609/` within the `cygwin/` directory. Consult the relevant source notices and the accompanying license files:
 
 - `COPYING-CYGWIN`
 - `COPYING-GPLv20`
