@@ -6,7 +6,7 @@ cd /d "%~dp0"
 call BUILD_TCC_bootstrapping.bat
 
 if exist TCCygwin-3.6.10-1 rmdir /Q /S TCCygwin-3.6.10-1
-if exist TCCygwin-3.7.0-0.609 rmdir /Q /S TCCygwin-3.7.0-0.609
+if exist TCCygwin-3.7.0-0.613 rmdir /Q /S TCCygwin-3.7.0-0.613
 
 x86_64-win32-tcc\x86_64-win32-tcc -DC2STR conftest.c -o c2str.exe
 
@@ -53,44 +53,44 @@ x86_64-win32-tcc\x86_64-win32-tcc -c win32\libwin\chkstk.S -o cygwin\x86_64-win3
 
 x86_64-win32-tcc\x86_64-win32-tcc -DCYGWIN_VERSION_DLL_MAJOR=3006 -DCYGWIN_VERSION_DLL_MINOR=10 -DCYGWIN_VERSION_API_MAJOR=0 -DCYGWIN_VERSION_API_MINOR=357 -c cygwin\crt0.c -o cygwin\CRT0_CYGWIN3610100.o
 
-x86_64-win32-tcc\x86_64-win32-tcc -DCYGWIN_VERSION_DLL_MAJOR=3007 -DCYGWIN_VERSION_DLL_MINOR=0 -DCYGWIN_VERSION_API_MAJOR=0 -DCYGWIN_VERSION_API_MINOR=362 -c cygwin\crt0.c -o cygwin\CRT0_CYGWIN3700609.o
+x86_64-win32-tcc\x86_64-win32-tcc -DCYGWIN_VERSION_DLL_MAJOR=3007 -DCYGWIN_VERSION_DLL_MINOR=0 -DCYGWIN_VERSION_API_MAJOR=0 -DCYGWIN_VERSION_API_MINOR=362 -c cygwin\crt0.c -o cygwin\CRT0_CYGWIN3700613.o
 
 mkdir TCCygwin-3.6.10-1\lib TCCygwin-3.6.10-1\include
-mkdir TCCygwin-3.7.0-0.609\lib TCCygwin-3.7.0-0.609\include
+mkdir TCCygwin-3.7.0-0.613\lib TCCygwin-3.7.0-0.613\include
 
 move cygwin\CRT0_CYGWIN3610100.o TCCygwin-3.6.10-1\lib\crt0.o
 x86_64-win32-tcc\x86_64-win32-tcc -ar rcs TCCygwin-3.6.10-1\lib\x86_64-win32-libtcc1.a TCCygwin-3.6.10-1\lib\crt0.o
 del TCCygwin-3.6.10-1\lib\crt0.o
 
-move cygwin\CRT0_CYGWIN3700609.o TCCygwin-3.7.0-0.609\lib\crt0.o
-x86_64-win32-tcc\x86_64-win32-tcc -ar rcs TCCygwin-3.7.0-0.609\lib\x86_64-win32-libtcc1.a TCCygwin-3.7.0-0.609\lib\crt0.o
-del TCCygwin-3.7.0-0.609\lib\crt0.o
+move cygwin\CRT0_CYGWIN3700613.o TCCygwin-3.7.0-0.613\lib\crt0.o
+x86_64-win32-tcc\x86_64-win32-tcc -ar rcs TCCygwin-3.7.0-0.613\lib\x86_64-win32-libtcc1.a TCCygwin-3.7.0-0.613\lib\crt0.o
+del TCCygwin-3.7.0-0.613\lib\crt0.o
 
 copy cygwin\x86_64-win32-chkstk.o TCCygwin-3.6.10-1\lib
-copy cygwin\x86_64-win32-chkstk.o TCCygwin-3.7.0-0.609\lib
+copy cygwin\x86_64-win32-chkstk.o TCCygwin-3.7.0-0.613\lib
 del cygwin\x86_64-win32-chkstk.o
 
 xcopy /E /Q /Y cygwin\INCLUDE_3610100 TCCygwin-3.6.10-1\include
-xcopy /E /Q /Y cygwin\INCLUDE_3610100 TCCygwin-3.7.0-0.609\include
-xcopy /E /Q /Y cygwin\INCLUDE_3700609 TCCygwin-3.7.0-0.609\include
+xcopy /E /Q /Y cygwin\INCLUDE_3610100 TCCygwin-3.7.0-0.613\include
+xcopy /E /Q /Y cygwin\INCLUDE_3700613 TCCygwin-3.7.0-0.613\include
 
 copy cygwin\kernel32.def TCCygwin-3.6.10-1\lib
-copy cygwin\kernel32.def TCCygwin-3.7.0-0.609\lib
+copy cygwin\kernel32.def TCCygwin-3.7.0-0.613\lib
 
 copy cygwin\CYGWIN1_3610100.def TCCygwin-3.6.10-1\lib\cygwin1.def
-copy cygwin\CYGWIN1_3700609.def TCCygwin-3.7.0-0.609\lib\cygwin1.def
+copy cygwin\CYGWIN1_3700613.def TCCygwin-3.7.0-0.613\lib\cygwin1.def
 
 copy x86_64-win32-tcc.exe TCCygwin-3.6.10-1\
-copy x86_64-win32-tcc.exe TCCygwin-3.7.0-0.609\
+copy x86_64-win32-tcc.exe TCCygwin-3.7.0-0.613\
 
 mkdir TCCygwin-3.6.10-1\examples
-mkdir TCCygwin-3.7.0-0.609\examples
+mkdir TCCygwin-3.7.0-0.613\examples
 
 xcopy /E /Q /Y cygwin\examples TCCygwin-3.6.10-1\examples
-xcopy /E /Q /Y cygwin\examples TCCygwin-3.7.0-0.609\examples
+xcopy /E /Q /Y cygwin\examples TCCygwin-3.7.0-0.613\examples
 
 xcopy /E /Q /Y doc\ TCCygwin-3.6.10-1\doc\
-xcopy /E /Q /Y doc\ TCCygwin-3.7.0-0.609\doc\
+xcopy /E /Q /Y doc\ TCCygwin-3.7.0-0.613\doc\
 
 del c2str.exe
 del x86_64-win32-tcc.exe
