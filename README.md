@@ -31,7 +31,7 @@ Prebuilt compiler packages are available alongside the source package, **`TCCygw
 | :--- | :--- |
 | `x86_64-win32-tcc` | Original native Windows TCC build, ready to use as the bootstrap compiler. |
 | `TCCygwin-3.6.10-1` | Native Windows compiler targeting the Cygwin `3.6.10-1` runtime. |
-| `TCCygwin-3.7.0-0.613` | Native Windows compiler targeting the Cygwin `3.7.0-0.613` runtime. |
+| `TCCygwin-3.7.0-0.616` | Native Windows compiler targeting the Cygwin `3.7.0-0.616` runtime. |
 
 Each unpacked binary package is approximately **2 MB**. The Cygwin runtime is obtained separately; see [Runtime setup](#runtime-setup).
 
@@ -69,7 +69,7 @@ The source package also provides scripts for building the native Windows compile
 
 | Script | Purpose |
 | :--- | :--- |
-| `BUILD_TCC.bat` | Basic build of the native Windows TCC compiler. (Do not use !!!) |
+| `BUILD_TCC.bat` | Basic build of the native Windows TCC compiler. (**Do not use !!!**) |
 | `BUILD_TCC_bootstrapping.bat` | Bootstrap build of the native Windows compiler; preferred over the basic build when building that compiler separately. |
 | **`BUILD_TCCygwin.bat`** | **Complete build: native compiler bootstrapping followed by both TCCygwin variants. (Building using this script is recommended.)** |
 
@@ -86,7 +86,7 @@ Select the runtime corresponding to your TCCygwin package:
 | Runtime | Kernel.org mirror | Checkdomain.de mirror |
 | :--- | :--- | :--- |
 | `3.6.10-1` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.6.10-1-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.6.10-1-x86_64.tar.xz) |
-| `3.7.0-0.613` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.613.gdd317d0b2b28-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.613.gdd317d0b2b28-x86_64.tar.xz) |
+| `3.7.0-0.616` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.616.g6fde14c0e24a-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.616.g6fde14c0e24a-x86_64.tar.xz) |
 
 Additional download locations are listed on the [Cygwin mirrors page](https://cygwin.com/mirrors.html). Availability of these specific archive versions may change over time.
 
@@ -128,7 +128,7 @@ To use a prebuilt package:
 
 The compiler is distributed under **GNU LGPL v2.1**. See [`COPYING-LGPLv21`](COPYING-LGPLv21) for the license text.
 
-Cygwin-related components have their own applicable licensing terms. These include `crt0.c`, `INCLUDE_3610100/`, and `INCLUDE_3700613/` within the `cygwin/` directory. Consult the relevant source notices and the accompanying license files:
+Cygwin-related components have their own applicable licensing terms. These include `crt0.c`, `INCLUDE_3610100/`, and `INCLUDE_3700616/` within the `cygwin/` directory. Consult the relevant source notices and the accompanying license files:
 
 - `COPYING-CYGWIN`
 - `COPYING-GPLv20`
