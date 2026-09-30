@@ -10,7 +10,7 @@ details. */
 #define _ATTR_XATTR_H
 
 #include "_ansi.h"
-#if 1
+#if 0
 /* Per man pages you have to include <sys/types.h> explicitely before
    including <attr/xattr.h>.  That's how it works on Linux, too. */
 #include <sys/types.h>
