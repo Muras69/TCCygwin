@@ -35,6 +35,8 @@
 
 #include <sys/types.h>
 
+typedef  unsigned short  u_short;
+
 typedef struct {
 	struct _ftsent *fts_cur;	/* current node */
 	struct _ftsent *fts_child;	/* linked list of children */

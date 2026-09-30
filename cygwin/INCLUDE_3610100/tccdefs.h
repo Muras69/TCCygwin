@@ -16,6 +16,11 @@
       check tccdefs_.h.
 */
 
+
+#ifndef __STRICT_ANSI__
+    #define __STRICT_ANSI__
+#endif
+
 #ifndef __x86_64__
     #define __x86_64__
 #endif
