@@ -31,7 +31,6 @@
 #ifndef _SSP_STDIO_H_
 #define _SSP_STDIO_H_
 
-#include <sys/types.h>
 #include <ssp/ssp.h>
 
 __BEGIN_DECLS
