@@ -33,7 +33,6 @@
 #ifndef _NETINET_TCP_H
 #define _NETINET_TCP_H
 
-#include <sys/types.h>
 #include <bits/endian.h>
 
 typedef u_int32_t tcp_seq;
