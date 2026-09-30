@@ -11,7 +11,7 @@ details. */
 
 #include <sys/cpuset.h>
 
-// #if !defined(__INSIDE_CYGWIN__) || !defined(__cplusplus)
+#if !defined(__INSIDE_CYGWIN__) || !defined(__cplusplus)
 
 typedef struct __pthread_t {char __dummy;} *pthread_t;
 typedef struct __pthread_mutex_t {char __dummy;} *pthread_mutex_t;
@@ -35,26 +35,26 @@ typedef struct __pthread_spinlock_t {char __dummy;} *pthread_spinlock_t;
 typedef struct __pthread_rwlock_t {char __dummy;} *pthread_rwlock_t;
 typedef struct __pthread_rwlockattr_t {char __dummy;} *pthread_rwlockattr_t;
 
-// #else
+#else
 
 /* pthreads types */
 
-// typedef class pthread *pthread_t;
-// typedef class pthread_mutex *pthread_mutex_t;
-// typedef class pthread_key *pthread_key_t;
-// typedef class pthread_attr *pthread_attr_t;
-// typedef class pthread_mutexattr *pthread_mutexattr_t;
-// typedef class pthread_condattr *pthread_condattr_t;
-// typedef class pthread_cond *pthread_cond_t;
-// typedef class pthread_barrier *pthread_barrier_t;
-// typedef class pthread_barrierattr *pthread_barrierattr_t;
-// typedef class pthread_once pthread_once_t;
-// typedef class pthread_spinlock *pthread_spinlock_t;
-// typedef class pthread_rwlock *pthread_rwlock_t;
-// typedef class pthread_rwlockattr *pthread_rwlockattr_t;
+typedef class pthread *pthread_t;
+typedef class pthread_mutex *pthread_mutex_t;
+typedef class pthread_key *pthread_key_t;
+typedef class pthread_attr *pthread_attr_t;
+typedef class pthread_mutexattr *pthread_mutexattr_t;
+typedef class pthread_condattr *pthread_condattr_t;
+typedef class pthread_cond *pthread_cond_t;
+typedef class pthread_barrier *pthread_barrier_t;
+typedef class pthread_barrierattr *pthread_barrierattr_t;
+typedef class pthread_once pthread_once_t;
+typedef class pthread_spinlock *pthread_spinlock_t;
+typedef class pthread_rwlock *pthread_rwlock_t;
+typedef class pthread_rwlockattr *pthread_rwlockattr_t;
 
-// /* semaphores types */
-// typedef class semaphore *sem_t;
-// #endif /* __INSIDE_CYGWIN__ */
+/* semaphores types */
+typedef class semaphore *sem_t;
+#endif /* __INSIDE_CYGWIN__ */
 
 #endif /* ! _SYS__PTHREADTYPES_H_ */

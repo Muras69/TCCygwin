@@ -1,8 +1,6 @@
 #ifndef _SYS__TZ_STRUCTS_H_
 #define _SYS__TZ_STRUCTS_H_
 
-#include <sys/types.h>
-
 typedef struct __tzrule_struct
 {
   char ch;
