@@ -9,10 +9,6 @@
 #ifndef _CYGWIN_SIGNAL_H
 #define _CYGWIN_SIGNAL_H
 
-#include <stdint.h>
-#include <sys/types.h>
-#include <machine/_default_types.h>
-#include <sys/_pthreadtypes.h>
 #include <bits/wordsize.h>
 
 #ifdef __cplusplus
