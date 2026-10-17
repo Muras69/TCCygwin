@@ -29,9 +29,9 @@ Prebuilt compiler packages are available alongside the source package, **`TCCygw
 
 | Package | Purpose |
 | :--- | :--- |
-| `x86_64-win32-tcc` | Original native Windows TCC build, ready to use as the bootstrap compiler. |
+| `x86_64-win32-tcc` | Original native Windows TCC build, ready to use as the bootstrap compiler. **Only for compiling main packages, not suitable for general use !**|
 | `TCCygwin-3.6.11-1` | Native Windows compiler targeting the Cygwin `3.6.11-1` runtime. |
-| `TCCygwin-3.7.0-0.618` | Native Windows compiler targeting the Cygwin `3.7.0-0.618` runtime. |
+| `TCCygwin-3.7.0-0.622` | Native Windows compiler targeting the Cygwin `3.7.0-0.622` runtime. |
 
 Each unpacked binary package is approximately **2 MB**. The Cygwin runtime is obtained separately; see [Runtime setup](#runtime-setup).
 
@@ -86,7 +86,7 @@ Select the runtime corresponding to your TCCygwin package:
 | Runtime | Kernel.org mirror | Checkdomain.de mirror |
 | :--- | :--- | :--- |
 | `3.6.11-1` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.6.11-1-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.6.11-1-x86_64.tar.xz) |
-| `3.7.0-0.618` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.618.g8f145421c964-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.618.g8f145421c964-x86_64.tar.xz) |
+| `3.7.0-0.622` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.622.g80df0a2b5d6b-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.622.g80df0a2b5d6b-x86_64.tar.xz) |
 
 Additional download locations are listed on the [Cygwin mirrors page](https://cygwin.com/mirrors.html). Availability of these specific archive versions may change over time.
 
@@ -100,12 +100,13 @@ For a minimal application, place the generated `.exe` and `cygwin1.dll` beside e
 | :--- | :--- |
 | `my-environment/bin/my-program.exe` | Your compiled application. |
 | `my-environment/bin/cygwin1.dll` | The corresponding Cygwin runtime. |
+| `my-environment/tmp` | Adding an empty tmp directory helps avoid many problems. |
 
 An application may also need other libraries, configuration files, or directories according to the APIs and dependencies it uses. Placing the executable beside the DLL supplies the runtime dependency; it does not create a complete Cygwin environment.
 
 ## Usage and documentation
 
-**It is highly advisable to write programs using the ANSI C standard. Header files have been structured to ensure the generated code meets ANSI C requirements. Additionally, it is recommended to include the appropriate POSIX standard version directive.** Compiler descriptions and usage examples are provided in **[`doc/`](doc/)**. Refer to that directory for the invocation syntax and options of the compiler variant you select.
+**It is strongly recommended that programs be written according to the ISO C99 standard (see the documentation regarding compiler limitations). The header files have been slightly modified to suit the compiler used. It is also recommended to set appropriate macros specifying the C language standard version or the level of supported POSIX interfaces if necessary to access additional features. It is important to note that program code may remain C99-compliant even if macros are set to enable interfaces specified in later versions of the standards or the POSIX standard to provide additional functionality.** Compiler descriptions and usage examples are provided in **[`doc/`](doc/)**. Refer to that directory for the invocation syntax and options of the compiler variant you select.
 
 To use a prebuilt package:
 
@@ -128,7 +129,7 @@ To use a prebuilt package:
 
 The compiler is distributed under **GNU LGPL v2.1**. See [`COPYING-LGPLv21`](COPYING-LGPLv21) for the license text.
 
-Cygwin-related components have their own applicable licensing terms. These include `crt0.c`, `INCLUDE_3611100/`, and `INCLUDE_3700618/` within the `cygwin/` directory. Consult the relevant source notices and the accompanying license files:
+Cygwin-related components have their own applicable licensing terms. These include `crt0.c`, `INCLUDE_3611100/`, and `INCLUDE_3700622/` within the `cygwin/` directory. Consult the relevant source notices and the accompanying license files:
 
 - `COPYING-CYGWIN`
 - `COPYING-GPLv20`
