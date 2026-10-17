@@ -1,0 +1,11 @@
+LIBRARY kernel32.dll
+
+EXPORTS
+EnterCriticalSection
+GetModuleFileNameA
+GetTickCount
+InitializeCriticalSection
+LeaveCriticalSection
+SearchPathA
+SetUnhandledExceptionFilter
+Sleep
