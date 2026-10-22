@@ -118,6 +118,9 @@ To use a prebuilt package:
    ```bat
    my-program.exe
    ```
+**Below is a video posted on YouTube:**
+
+**[![Watch the video](https://youtube.com)](https://youtu.be/3MrHL-R4deE)**
 
 ## Authors and acknowledgments
 
