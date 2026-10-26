@@ -30,7 +30,7 @@ Prebuilt compiler packages are available alongside the source package, **`TCCygw
 | Package | Purpose |
 | :--- | :--- |
 | `x86_64-win32-tcc` | Original native Windows TCC build, ready to use as the bootstrap compiler. **Only for compiling main packages, not suitable for general use !**|
-| `TCCygwin-3.6.11-1` | Native Windows compiler targeting the Cygwin `3.6.11-1` runtime. |
+| `TCCygwin-3.6.12-1` | Native Windows compiler targeting the Cygwin `3.6.12-1` runtime. |
 | `TCCygwin-3.7.0-0.635` | Native Windows compiler targeting the Cygwin `3.7.0-0.635` runtime. |
 
 Each unpacked binary package is approximately **2 MB**. The Cygwin runtime is obtained separately; see [Runtime setup](#runtime-setup).
@@ -85,7 +85,7 @@ Select the runtime corresponding to your TCCygwin package:
 
 | Runtime | Kernel.org mirror | Checkdomain.de mirror |
 | :--- | :--- | :--- |
-| `3.6.11-1` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.6.11-1-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.6.11-1-x86_64.tar.xz) |
+| `3.6.12-1` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.6.12-1-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.6.12-1-x86_64.tar.xz) |
 | `3.7.0-0.635` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.635.g2ff49b026a9f-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.635.g2ff49b026a9f-x86_64.tar.xz) |
 
 Additional download locations are listed on the [Cygwin mirrors page](https://cygwin.com/mirrors.html). Availability of these specific archive versions may change over time.
@@ -132,7 +132,7 @@ To use a prebuilt package:
 
 The compiler is distributed under **GNU LGPL v2.1**. See [`COPYING-LGPLv21`](COPYING-LGPLv21) for the license text.
 
-Cygwin-related components have their own applicable licensing terms. These include `crt0.c`, `INCLUDE_3611100/`, and `INCLUDE_37UNDEF/` within the `cygwin/` directory. Consult the relevant source notices and the accompanying license files:
+Cygwin-related components have their own applicable licensing terms. These include `crt0.c`, `INCLUDE_36UNDEF/`, and `INCLUDE_37UNDEF/` within the `cygwin/` directory. Consult the relevant source notices and the accompanying license files:
 
 - `COPYING-CYGWIN`
 - `COPYING-GPLv20`
