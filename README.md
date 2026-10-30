@@ -31,7 +31,7 @@ Prebuilt compiler packages are available alongside the source package, **`TCCygw
 | :--- | :--- |
 | `x86_64-win32-tcc` | Original native Windows TCC build, ready to use as the bootstrap compiler. **Only for compiling main packages, not suitable for general use !**|
 | `TCCygwin-3.6.12-1` | Native Windows compiler targeting the Cygwin `3.6.12-1` runtime. |
-| `TCCygwin-3.7.0-0.637` | Native Windows compiler targeting the Cygwin `3.7.0-0.637` runtime. |
+| `TCCygwin-3.7.0-0.645` | Native Windows compiler targeting the Cygwin `3.7.0-0.645` runtime. |
 
 Each unpacked binary package is approximately **2 MB**. The Cygwin runtime is obtained separately; see [Runtime setup](#runtime-setup).
 
@@ -86,7 +86,7 @@ Select the runtime corresponding to your TCCygwin package:
 | Runtime | Kernel.org mirror | Checkdomain.de mirror |
 | :--- | :--- | :--- |
 | `3.6.12-1` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.6.12-1-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.6.12-1-x86_64.tar.xz) |
-| `3.7.0-0.637` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.637.g1aeae4f14a45-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.637.g1aeae4f14a45-x86_64.tar.xz) |
+| `3.7.0-0.645` | [Download archive](https://mirrors.kernel.org/sourceware/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.645.gb097f95233d2-x86_64.tar.xz) | [Download archive](https://mirror.checkdomain.de/cygwin/x86_64/release/cygwin/cygwin-3.7.0-0.645.gb097f95233d2-x86_64.tar.xz) |
 
 Additional download locations are listed on the [Cygwin mirrors page](https://cygwin.com/mirrors.html). Availability of these specific archive versions may change over time.
 
