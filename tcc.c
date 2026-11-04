@@ -27175,7 +27175,7 @@ void load(int r, SValue *sv)
         } else if ((ft & (~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == (0)) {
             return;
         } else {
-            ((((ft & 0x000f) == 3) || ((ft & 0x000f) == 4) || ((ft & 0x000f) == 5) || ((ft & 0x000f) == 6)) ? (void)0 : _assert("((ft & VT_BTYPE) == VT_INT) || ((ft & VT_BTYPE) == VT_LLONG) || ((ft & VT_BTYPE) == VT_PTR) || ((ft & VT_BTYPE) == VT_FUNC)", "x86_64-gen.c", 472));
+            ((((ft & 0x000f) == 3) || ((ft & 0x000f) == 4) || ((ft & 0x000f) == 5) || ((ft & 0x000f) == 6)) ? (void)0 : _assert("((ft & VT_BTYPE) == VT_INT) || ((ft & VT_BTYPE) == VT_LLONG) || ((ft & VT_BTYPE) == VT_PTR) || ((ft & VT_BTYPE) == VT_FUNC)", "../tinycc-32d1c0a/x86_64-gen.c", 472));
             ll = is64_type(ft);
             b = 0x8b;
         }
@@ -27231,17 +27231,17 @@ void load(int r, SValue *sv)
                     o(0x44 + ((r) & 7)*8);
                     o(0xf024);
                 } else {
-                    (((v >= TREG_XMM0) && (v <= TREG_XMM7)) ? (void)0 : _assert("(v >= TREG_XMM0) && (v <= TREG_XMM7)", "x86_64-gen.c", 551));
+                    (((v >= TREG_XMM0) && (v <= TREG_XMM7)) ? (void)0 : _assert("(v >= TREG_XMM0) && (v <= TREG_XMM7)", "../tinycc-32d1c0a/x86_64-gen.c", 551));
                     if ((ft & 0x000f) == 8) {
                         o(0x100ff3);
                     } else {
-                        (((ft & 0x000f) == 9) ? (void)0 : _assert("(ft & VT_BTYPE) == VT_DOUBLE", "x86_64-gen.c", 555));
+                        (((ft & 0x000f) == 9) ? (void)0 : _assert("(ft & VT_BTYPE) == VT_DOUBLE", "../tinycc-32d1c0a/x86_64-gen.c", 555));
                         o(0x100ff2);
                     }
                     o(0xc0 + ((v) & 7) + ((r) & 7)*8);
                 }
             } else if (r == TREG_ST0) {
-                (((v >= TREG_XMM0) && (v <= TREG_XMM7)) ? (void)0 : _assert("(v >= TREG_XMM0) && (v <= TREG_XMM7)", "x86_64-gen.c", 561));
+                (((v >= TREG_XMM0) && (v <= TREG_XMM7)) ? (void)0 : _assert("(v >= TREG_XMM0) && (v <= TREG_XMM7)", "../tinycc-32d1c0a/x86_64-gen.c", 561));
                 o(0x110ff2);
                 o(0x44 + ((r) & 7)*8);
                 o(0xf024);
@@ -27826,7 +27826,7 @@ void gen_opf(int op)
                 gv(0x0002);
                 vswap();
             }
-            ((!(vtop[-1].r & 0x0100)) ? (void)0 : _assert("!(vtop[-1].r & VT_LVAL)", "x86_64-gen.c", 1942));
+            ((!(vtop[-1].r & 0x0100)) ? (void)0 : _assert("!(vtop[-1].r & VT_LVAL)", "../tinycc-32d1c0a/x86_64-gen.c", 1942));
             if (op == 0x94 || op == 0x95)
                 opc = 0x2e0f;
             else
@@ -27838,7 +27838,7 @@ void gen_opf(int op)
             vset_VT_CMP(op | 0x100);
             vtop->cmp_r = op;
         } else {
-            (((vtop->type.t & 0x000f) != 10) ? (void)0 : _assert("(vtop->type.t & VT_BTYPE) != VT_LDOUBLE", "x86_64-gen.c", 1956));
+            (((vtop->type.t & 0x000f) != 10) ? (void)0 : _assert("(vtop->type.t & VT_BTYPE) != VT_LDOUBLE", "../tinycc-32d1c0a/x86_64-gen.c", 1956));
             switch(op) {
             default:
             case '+':
@@ -27856,7 +27856,7 @@ void gen_opf(int op)
             }
             ft = vtop->type.t;
             fc = vtop->c.i;
-            (((ft & 0x000f) != 10) ? (void)0 : _assert("(ft & VT_BTYPE) != VT_LDOUBLE", "x86_64-gen.c", 1974));
+            (((ft & 0x000f) != 10) ? (void)0 : _assert("(ft & VT_BTYPE) != VT_LDOUBLE", "../tinycc-32d1c0a/x86_64-gen.c", 1974));
             if ((vtop->r & 0x003f) == 0x0031) {
                 SValue v1;
                 r = get_reg(0x0001);
@@ -27868,9 +27868,9 @@ void gen_opf(int op)
                 fc = 0;
                 vtop->r = r | 0x0100;
             }
-            ((!(vtop[-1].r & 0x0100)) ? (void)0 : _assert("!(vtop[-1].r & VT_LVAL)", "x86_64-gen.c", 1989));
+            ((!(vtop[-1].r & 0x0100)) ? (void)0 : _assert("!(vtop[-1].r & VT_LVAL)", "../tinycc-32d1c0a/x86_64-gen.c", 1989));
             if (swapped) {
-                ((vtop->r & 0x0100) ? (void)0 : _assert("vtop->r & VT_LVAL", "x86_64-gen.c", 1991));
+                ((vtop->r & 0x0100) ? (void)0 : _assert("vtop->r & VT_LVAL", "../tinycc-32d1c0a/x86_64-gen.c", 1991));
                 gv(0x0002);
                 vswap();
                 fc = vtop->c.i;
@@ -27984,17 +27984,14 @@ void gen_cvt_ftoi(int t)
     ft = vtop->type.t;
     bt = ft & 0x000f;
     if (bt == 10) {
-	if (t != 3) {
-	    vpush_helper_func(TOK___fixxfdi);
-	    vswap();
-	    gfunc_call(1);
-	    vpushi(0);
-	    vtop->r = TREG_RAX;
-	    vtop->r2 = TREG_RDX;
-	    return;
-	}
-        gen_cvt_ftof(9);
-        bt = 9;
+        vpush_helper_func(TOK___fixxfdi);
+        vswap();
+        gfunc_call(1);
+        vpushi(0);
+        vtop->r = TREG_RAX;
+        if (t != 3)
+          vtop->r2 = TREG_RDX;
+        return;
     }
     gv(0x0002);
     if (t != 3)
@@ -28007,7 +28004,7 @@ void gen_cvt_ftoi(int t)
     } else if (bt == 9) {
         o(0xf2);
     } else {
-        ((0) ? (void)0 : _assert("0", "x86_64-gen.c", 2149));
+        ((0) ? (void)0 : _assert("0", "../tinycc-32d1c0a/x86_64-gen.c", 2146));
     }
     orex(size == 8, r, 0, 0x2c0f);
     o(0xc0 + ((vtop->r) & 7) + ((r) & 7)*8);
@@ -33390,7 +33387,7 @@ static const char help2[] =
     ;
 static const char version[] =
     "tcc version ""0.9.28rc"
-    " ""72acb07a9d726115e1b230f18d6b9d5a6dc77a69"
+    " ""fe26abebd7e17e2e34212b094ff418a96b4c2068"
     " ("
         "x86_64"
         " Windows"

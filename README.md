@@ -25,7 +25,7 @@ For detailed language support, options, and limitations, see the compiler docume
 
 ## Packages
 
-Prebuilt compiler packages are available alongside the source package, **`TCCygwin-72acb07`**. **It is recommended to download the source package and run the BUILD_TCCygwin.bat file to obtain the latest version.**
+Prebuilt compiler packages are available alongside the source package, **`TCCygwin-fe26abe`**. **It is recommended to download the source package and run the BUILD_TCCygwin.bat file to obtain the latest version.**
 
 | Package | Purpose |
 | :--- | :--- |
@@ -45,8 +45,8 @@ The compiler is implemented in **C with assembly components**, based on TinyCC, 
 | Development repository | [TinyCC on repo.or.cz](https://repo.or.cz/tinycc.git) |
 | Source branch | `mob` |
 | Working version | `0.9.28rc` |
-| Source tree identifier | `72acb07a9d726115e1b230f18d6b9d5a6dc77a69` |
-| Source package | `TCCygwin-72acb07` |
+| Source tree identifier | `fe26abebd7e17e2e34212b094ff418a96b4c2068` |
+| Source package | `TCCygwin-fe26abe` |
 | Build scripts | Windows batch (`.bat`) |
 
 These identifiers describe the source baseline used for this package.
@@ -55,7 +55,7 @@ These identifiers describe the source baseline used for this package.
 
 The source package includes an already-built native Windows bootstrap compiler.
 
-1. Extract `TCCygwin-72acb07`.
+1. Extract `TCCygwin-fe26abe`.
 2. Open **Command Prompt** in the directory containing the build scripts.
 3. Run the main build script:
 
