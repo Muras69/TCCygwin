@@ -21588,7 +21588,7 @@ static int decl_designator(init_params *p, CType *type, unsigned long c,
                            Sym **cur_field, int flags, int al)
 {
     Sym *s, *f;
-    int index, index_last, align, l, nb_elems, elem_size;
+    int index, index_last, align, l, nb_elems, elem_size, chain = 0;
     unsigned long corig = c;
     elem_size = 0;
     nb_elems = 1;
@@ -21634,6 +21634,18 @@ static int decl_designator(init_params *p, CType *type, unsigned long c,
             c += cumofs;
         }
         cur_field = ((void*)0);
+        if (nb_elems == 1 && (tok == '[' || tok == '.')) {
+            chain = 1;
+            break;
+        }
+    }
+    if (chain) {
+        elem_size = type_size(type, &align);
+        if (!(flags & 2) && c - corig < al)
+            flags = (flags & ~8) | 16;
+        decl_initializer(p, type, c, flags & ~1);
+        c += elem_size;
+        return c - corig > al ? c - corig : al;
     }
     if (!cur_field) {
         if (tok == '=') {
@@ -21665,11 +21677,11 @@ static int decl_designator(init_params *p, CType *type, unsigned long c,
     }
     if (!elem_size)
         elem_size = type_size(type, &align);
-    if (!(flags & 2) && c - corig < al) {
+    if (!(flags & 2) && (c - corig < al || (flags & 16))) {
         decl_design_delrels(p->sec, c, elem_size * nb_elems);
         flags &= ~8;
     }
-    decl_initializer(p, type, c, flags & ~1);
+    decl_initializer(p, type, c, flags & ~(1 | 16));
     if (!(flags & 2) && nb_elems > 1) {
         Sym aref = {0};
         CType t1;
@@ -21846,7 +21858,7 @@ static void decl_initializer(init_params *p, CType *type, unsigned long c, int f
     if (debug_modes && !(flags & 2) && !p->sec)
         tcc_debug_line(tcc_state), tcc_tcov_check_line (tcc_state, 1);
     if (!(flags & 4) && tok != '{' &&
-	tok != 0xc9 && tok != 0xc8 &&
+	tok != 0xc9 && tok != 0xc8 && tok != '[' && tok != '.' &&
 	(!(flags & 2)
             || (type->t & 0x000f) == 7)
         ) {
@@ -21930,7 +21942,7 @@ static void decl_initializer(init_params *p, CType *type, unsigned long c, int f
 	    indexsym.c = 0;
 	    f = &indexsym;
           do_init_list:
-            if (!(flags & (8 | 2))) {
+            if (!(flags & (8 | 2 | 16))) {
                 init_putz(p, c, n*size1);
                 flags |= 8;
             }
@@ -21954,6 +21966,10 @@ static void decl_initializer(init_params *p, CType *type, unsigned long c, int f
 		if (tok == '}')
 		    break;
 		skip(',');
+		if (no_oblock && (tok == '[' || tok == '.')) {
+		    unget_tok(',');
+		    break;
+		}
 	    }
         }
         if (!no_oblock)
@@ -33391,7 +33407,7 @@ static const char help2[] =
     ;
 static const char version[] =
     "tcc version ""0.9.28rc"
-    " ""fe26abebd7e17e2e34212b094ff418a96b4c2068"
+    " ""df95b814cfa2adbb0207c7d1802dfd5e442fb958"
     " ("
         "x86_64"
         " Windows"
