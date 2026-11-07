@@ -18205,6 +18205,8 @@ again:
 error:
             cast_error(&vtop->type, type);
         }
+        if (df && !sf && !is_integer_btype(sbt_bt))
+            goto error;
         c = (vtop->r & (0x003f | 0x0100 | 0x0200)) == 0x0030;
         if (c) {
             if (sbt == 8)
@@ -18499,6 +18501,12 @@ static void verify_assign_cast(CType *dt)
         } else if (sbt == 7) {
             goto case_VT_STRUCT;
         }
+        break;
+    case 8:
+    case 9:
+    case 10:
+        if (sbt == 5 || sbt == 6)
+            goto error;
         break;
     case 7:
     case_VT_STRUCT:
@@ -21544,7 +21552,7 @@ static void init_assert(init_params *p, int offset)
 {
     if (p->sec ? !(nocode_wanted > 0) && offset > p->sec->data_offset
                : !nocode_wanted && offset > p->local_offset)
-        _tcc_error("internal compiler error in %s:%d: %s", __FUNCTION__,7652,"initializer overflow");
+        _tcc_error("internal compiler error in %s:%d: %s", __FUNCTION__,7661,"initializer overflow");
 }
 static void init_putz(init_params *p, unsigned long c, int size)
 {
@@ -33407,7 +33415,7 @@ static const char help2[] =
     ;
 static const char version[] =
     "tcc version ""0.9.28rc"
-    " ""df95b814cfa2adbb0207c7d1802dfd5e442fb958"
+    " ""9374fd6f04a8bb8eb68e1a80120713d70d110c5b"
     " ("
         "x86_64"
         " Windows"
