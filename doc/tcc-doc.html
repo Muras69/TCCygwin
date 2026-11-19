@@ -858,6 +858,19 @@ supported.
 
 </li><li><code class="code">_Atomic</code> type qualifier for atomic types.
 
+</li><li><code class="code">_Optional</code> type qualifier as specified by draft ISO/IEC TS
+26716 (WG14 document N3951).  Optional qualification is tracked at every
+type level and participates in the standard qualifier and conversion
+rules.  TCC does not perform flow-sensitive analysis to determine whether
+an optional object is present.
+
+<p>The qualifier applies to the referenced type: a pointer is not
+optional merely because it can have a null value, any more
+than a pointer is <code class="code">const</code> merely because it can reference an
+immutable object. A null pointer value can be copied, printed or
+converted, whereas an optional pointer object has neither value nor
+storage when the pointer through which it would be accessed is null.
+</p>
 </li><li><code class="code">_Thread_local</code> storage-class specifier for thread-local
 storage.  The GCC extension <code class="code">__thread</code> is also supported.
 
