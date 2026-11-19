@@ -11150,6 +11150,7 @@ enum tcc_token {
      ,TOK_STATIC
      ,TOK_UNSIGNED
      ,TOK__Atomic
+     ,TOK_OPTIONAL
      ,TOK_CONST1
      ,TOK_CONST2
      ,TOK_CONST3
@@ -12245,6 +12246,7 @@ static const char tcc_keywords[] =
      "static" "\0"
      "unsigned" "\0"
      "_Atomic" "\0"
+     "_Optional" "\0"
      "const" "\0"
      "__const" "\0"
      "__const__" "\0"
@@ -16184,6 +16186,9 @@ static void gen_cast(CType *type);
 static void gen_cast_s(int t);
 static __inline CType *pointed_type(CType *type);
 static void check_restrict_type(CType *type);
+static void unqualify_optional(CType *type);
+static void unqualify_optional_target(CType *type);
+static int is_optional_type(CType *type);
 static int type_qualifiers(CType *type);
 static void parse_btype_qualify(CType *type, int qualifiers);
 static int is_compatible_types(CType *type1, CType *type2);
@@ -16397,7 +16402,7 @@ static void update_storage(Sym *sym)
     if (sym->a.visibility)
         esym->st_other = (esym->st_other & ~((-1) & 0x03))
             | sym->a.visibility;
-    if (sym->type.t & (0x00004000 | 0x00010000))
+    if (sym->type.t & (0x00008000 | 0x00020000))
         sym_bind = 0;
     else if (sym->a.weak)
         sym_bind = 2;
@@ -16429,12 +16434,12 @@ static void put_extern_sym2(Sym *sym, int sh_num,
             sym_type = 0;
             if (((t & (0x000f|(((1U << (6+6)) - 1) << 20 | 0x0080))) == (0 | 5 << 20)))
                 sym_type = 2;
-        } else if (t & 0x00020000) {
+        } else if (t & 0x00040000) {
             sym_type = 6;
         } else {
             sym_type = 1;
         }
-        if (t & (0x00004000 | 0x00010000))
+        if (t & (0x00008000 | 0x00020000))
             sym_bind = 0;
         else
             sym_bind = 1;
@@ -16488,7 +16493,7 @@ static void greloca(Section *s, Sym *sym, unsigned long offset, int type,
         if (0 == sym->c) {
             put_extern_sym(sym, ((void*)0), 0, 0);
             if (sym->sym_scope
-                && (sym->type.t & (0x00004000|0x00002000)) == (0x00004000|0x00002000)) {
+                && (sym->type.t & (0x00008000|0x00004000)) == (0x00008000|0x00004000)) {
                 Sym *s = sym;
                 while (s->prev_tok)
                     s = s->prev_tok;
@@ -16643,7 +16648,7 @@ static Sym *label_find(int v)
 static Sym *label_push(Sym **ptop, int v, int flags)
 {
     Sym *s, **ps;
-    s = sym_push2(ptop, v, 0x00004000, 0);
+    s = sym_push2(ptop, v, 0x00008000, 0);
     s->r = flags;
     ps = &table_ident[v - 256]->sym_label;
     if (ptop == &global_label_stack) {
@@ -16871,7 +16876,7 @@ static Sym *get_sym_ref(CType *type, Section *sec, unsigned long offset, unsigne
     Sym *sym;
     v = anon_sym++;
     sym = sym_push(v, type, 0x0030 | 0x0200, 0);
-    sym->type.t |= 0x00004000;
+    sym->type.t |= 0x00008000;
     put_extern_sym(sym, sec, offset, size);
     return sym;
 }
@@ -16884,10 +16889,10 @@ static Sym *external_global_sym(int v, CType *type)
     Sym *s;
     s = sym_find(v);
     if (!s) {
-        s = global_identifier_push(v, type->t | 0x00002000, 0);
+        s = global_identifier_push(v, type->t | 0x00004000, 0);
         s->type.ref = type->ref;
     } else if ((((s)->type.t & ((0x000f|(((1U << (6+6)) - 1) << 20 | 0x0080)) & ~(1<<20))) == (0 | 4 << 20))) {
-        s->type.t = type->t | (s->type.t & 0x00002000);
+        s->type.t = type->t | (s->type.t & 0x00004000);
         s->type.ref = type->ref;
         update_storage(s);
     }
@@ -16950,13 +16955,13 @@ static void merge_attr(AttributeDef *ad, AttributeDef *ad1)
 }
 static void patch_type(Sym *sym, CType *type)
 {
-    if (!(type->t & 0x00002000) || ((sym->type.t & (((1U << (6+6)) - 1) << 20 | 0x0080)) == (3 << 20))) {
-        if (!(sym->type.t & 0x00002000))
+    if (!(type->t & 0x00004000) || ((sym->type.t & (((1U << (6+6)) - 1) << 20 | 0x0080)) == (3 << 20))) {
+        if (!(sym->type.t & 0x00004000))
             _tcc_error("redefinition of '%s'", get_tok_str(sym->v, ((void*)0)));
-        sym->type.t &= ~0x00002000;
+        sym->type.t &= ~0x00004000;
     }
     if ((((sym)->type.t & ((0x000f|(((1U << (6+6)) - 1) << 20 | 0x0080)) & ~(1<<20))) == (0 | 4 << 20))) {
-        sym->type.t = type->t & (sym->type.t | ~0x00004000);
+        sym->type.t = type->t & (sym->type.t | ~0x00008000);
         sym->type.ref = type->ref;
         if ((type->t & 0x000f) != 6 && !(type->t & 0x0040))
             sym->r |= 0x0100;
@@ -16965,27 +16970,27 @@ static void patch_type(Sym *sym, CType *type)
         _tcc_error("incompatible types for redefinition of '%s'",
                   get_tok_str(sym->v, ((void*)0)));
     } else if ((sym->type.t & 0x000f) == 6) {
-        int static_proto = sym->type.t & 0x00004000;
+        int static_proto = sym->type.t & 0x00008000;
         int ft1 = sym->type.ref->f.func_type;
         int ft2 = type->ref->f.func_type;
-        if ((type->t & 0x00004000) && !static_proto
-            && !((type->t | sym->type.t) & 0x00010000))
+        if ((type->t & 0x00008000) && !static_proto
+            && !((type->t | sym->type.t) & 0x00020000))
             _tcc_warning("static storage ignored for redefinition of '%s'",
                 get_tok_str(sym->v, ((void*)0)));
-        if ((type->t | sym->type.t) & 0x00010000) {
-            if (!((type->t ^ sym->type.t) & 0x00010000)
-             || ((type->t | sym->type.t) & 0x00004000))
-                static_proto |= 0x00010000;
+        if ((type->t | sym->type.t) & 0x00020000) {
+            if (!((type->t ^ sym->type.t) & 0x00020000)
+             || ((type->t | sym->type.t) & 0x00008000))
+                static_proto |= 0x00020000;
         }
-        if (0 == (type->t & 0x00002000)) {
+        if (0 == (type->t & 0x00004000)) {
             struct FuncAttr f = sym->type.ref->f;
-            sym->type.t = (type->t & ~(0x00004000|0x00010000)) | static_proto;
+            sym->type.t = (type->t & ~(0x00008000|0x00020000)) | static_proto;
             if (ft1 != 2)
                 type->ref->f.func_type = ft1;
             sym->type.ref = type->ref;
             merge_funcattr(&sym->type.ref->f, &f);
         } else {
-            sym->type.t &= ~0x00010000 | static_proto;
+            sym->type.t &= ~0x00020000 | static_proto;
             if (ft1 == 2 && ft2 != 2)
                 sym->type.ref = type->ref;
         }
@@ -16993,7 +16998,7 @@ static void patch_type(Sym *sym, CType *type)
         if ((sym->type.t & 0x0040) && type->ref->c >= 0) {
             sym->type.ref->c = type->ref->c;
         }
-        if ((type->t ^ sym->type.t) & 0x00004000)
+        if ((type->t ^ sym->type.t) & 0x00008000)
             _tcc_warning("storage mismatch for redefinition of '%s'",
                 get_tok_str(sym->v, ((void*)0)));
     }
@@ -17302,7 +17307,7 @@ static int adjust_bf(SValue *sv, int bit_pos, int bit_size)
         return 0;
     t = sv->type.ref->auxtype;
     if (t != -1 && t != 7) {
-        sv->type.t = (sv->type.t & ~(0x000f | 0x1000)) | t;
+        sv->type.t = (sv->type.t & ~(0x000f | 0x2000)) | t;
         sv->r |= 0x0100;
     }
     return t;
@@ -17692,17 +17697,19 @@ static void type_to_str(char *buf, int buf_size,
     t = type->t;
     bt = t & 0x000f;
     buf[0] = '\0';
-    if (t & 0x00002000)
-        pstrcat(buf, buf_size, "extern ");
     if (t & 0x00004000)
-        pstrcat(buf, buf_size, "static ");
+        pstrcat(buf, buf_size, "extern ");
     if (t & 0x00008000)
-        pstrcat(buf, buf_size, "typedef ");
+        pstrcat(buf, buf_size, "static ");
     if (t & 0x00010000)
+        pstrcat(buf, buf_size, "typedef ");
+    if (t & 0x00020000)
         pstrcat(buf, buf_size, "inline ");
     if (bt != 5) {
         if (t & 0x0400)
             pstrcat(buf, buf_size, "restrict ");
+        if (t & 0x0800)
+            pstrcat(buf, buf_size, "_Optional ");
         if (t & 0x0200)
             pstrcat(buf, buf_size, "volatile ");
         if (t & 0x0100)
@@ -17735,7 +17742,7 @@ static void type_to_str(char *buf, int buf_size,
     case 4:
         tstr = "long long";
     maybe_long:
-        if (t & 0x1000)
+        if (t & 0x2000)
             tstr = "long";
         if (!((t & (((1U << (6+6)) - 1) << 20 | 0x0080)) == (2 << 20)))
             goto add_tstr;
@@ -17746,7 +17753,7 @@ static void type_to_str(char *buf, int buf_size,
         goto add_tstr;
     case 9:
         tstr = "double";
-        if (!(t & 0x1000))
+        if (!(t & 0x2000))
             goto add_tstr;
     case 10:
         tstr = "long double";
@@ -17790,7 +17797,7 @@ static void type_to_str(char *buf, int buf_size,
         goto no_var;
     case 5:
         s = type->ref;
-        if (t & (0x0040|0x0800)) {
+        if (t & (0x0040|0x1000)) {
             if (varstr && '*' == *varstr)
                 _snprintf(buf1, sizeof(buf1), "(%s)[%d]", varstr, s->c);
             else
@@ -17805,6 +17812,8 @@ static void type_to_str(char *buf, int buf_size,
             pstrcat(buf1, sizeof(buf1), "const ");
         if (t & 0x0200)
             pstrcat(buf1, sizeof(buf1), "volatile ");
+        if (t & 0x0800)
+            pstrcat(buf1, sizeof(buf1), "_Optional ");
         if (varstr)
             pstrcat(buf1, sizeof(buf1), varstr);
         type_to_str(buf, buf_size, &s->type, buf1);
@@ -17844,7 +17853,7 @@ static __inline int is_null_pointer(SValue *p)
         ((p->type.t & 0x000f) == 5 &&
          (8 == 4 ? (uint32_t)p->c.i == 0 : p->c.i == 0) &&
          ((pointed_type(&p->type)->t & 0x000f) == 0) &&
-         0 == (pointed_type(&p->type)->t & (0x0100 | 0x0200 | 0x0400))
+         0 == (pointed_type(&p->type)->t & (0x0100 | 0x0200 | 0x0400 | 0x0800))
          );
 }
 static int is_compatible_func(CType *type1, CType *type2)
@@ -17880,11 +17889,11 @@ static int compare_types(CType *type1, CType *type2, int unqualified)
         type1 = &type1->ref->type;
     } else if (((type2->t & (((1U << (6+6)) - 1) << 20 | 0x0080)) == (2 << 20)))
         type2 = &type2->ref->type;
-    t1 = type1->t & (~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)|(((1U << (6+6)) - 1) << 20 | 0x0080)));
-    t2 = type2->t & (~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)|(((1U << (6+6)) - 1) << 20 | 0x0080)));
+    t1 = type1->t & (~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)|(((1U << (6+6)) - 1) << 20 | 0x0080)));
+    t2 = type2->t & (~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)|(((1U << (6+6)) - 1) << 20 | 0x0080)));
     if (unqualified) {
-        t1 &= ~(0x0100 | 0x0200 | 0x0400);
-        t2 &= ~(0x0100 | 0x0200 | 0x0400);
+        t1 &= ~(0x0100 | 0x0200 | 0x0400 | 0x0800);
+        t2 &= ~(0x0100 | 0x0200 | 0x0400 | 0x0800);
     }
     if ((t1 & 0x000f) != 1) {
         t1 &= ~0x0020;
@@ -18000,7 +18009,7 @@ static int combine_types(CType *dest, SValue *op1, SValue *op2, int op)
             type.t = 8;
         }
     } else if (bt1 == 4 || bt2 == 4) {
-        type.t = 4 | 0x1000;
+        type.t = 4 | 0x2000;
         if (bt1 == 4)
           type.t &= t1;
         if (bt2 == 4)
@@ -18009,7 +18018,7 @@ static int combine_types(CType *dest, SValue *op1, SValue *op2, int op)
             (t2 & (0x000f | 0x0010)) == (4 | 0x0010))
           type.t |= 0x0010;
     } else {
-        type.t = 3 | (0x1000 & (t1 | t2));
+        type.t = 3 | (0x2000 & (t1 | t2));
         if (((t1 & (0x000f | 0x0010)) == (3 | 0x0010)
                 && (!(t1 & 0x0080) || (((t1) >> (20 + 6)) & 0x3f) == 32))
          || ((t2 & (0x000f | 0x0010)) == (3 | 0x0010)
@@ -18037,11 +18046,13 @@ redo:
     if (bt1 == 6 || bt2 == 6) {
 	if (bt2 == 6) {
 	    mk_pointer(&vtop->type);
+	    unqualify_optional_target(&vtop->type);
 	    gaddrof();
 	}
 	if (bt1 == 6) {
 	    vswap();
 	    mk_pointer(&vtop->type);
+	    unqualify_optional_target(&vtop->type);
 	    gaddrof();
 	    vswap();
 	}
@@ -18078,7 +18089,8 @@ op_err:
             {
                 gen_opic(op);
             }
-            type1.t &= ~(0x0040|0x0800);
+            type1.t &= ~(0x0040|0x1000);
+            unqualify_optional_target(&type1);
             vtop->type = type1;
         }
     } else {
@@ -18340,7 +18352,7 @@ error:
     }
 done:
     vtop->type = *type;
-    vtop->type.t &= ~ ( (0x0100 | 0x0200 | 0x0400) | 0x0040 | 0x00020000 );
+    vtop->type.t &= ~ ( (0x0100 | 0x0200 | 0x0400 | 0x0800) | 0x0040 | 0x00040000 );
 }
 static int type_size(CType *type, int *a)
 {
@@ -18388,7 +18400,7 @@ static int type_size(CType *type, int *a)
 }
 static void vpush_type_size(CType *type, int *a)
 {
-    if (type->t & 0x0800) {
+    if (type->t & 0x1000) {
         type_size(&type->ref->type, a);
         vset(&int_type, 0x0032|0x0100, type->ref->c);
     } else {
@@ -18413,17 +18425,40 @@ static void check_restrict_type(CType *type)
     if (type->t & 0x0400)
         _tcc_error("restrict-qualified type must be a pointer to object or incomplete type");
 }
+static void unqualify_optional(CType *type)
+{
+    if (!is_optional_type(type))
+        return;
+    while (type->t & 0x0040) {
+        type->ref = sym_push(0x20000000, &type->ref->type, 0, type->ref->c);
+        type = pointed_type(type);
+    }
+    type->t &= ~0x0800;
+}
+static void unqualify_optional_target(CType *type)
+{
+    if (!is_optional_type(pointed_type(type)))
+        return;
+    type->ref = sym_push(0x20000000, &type->ref->type, 0, type->ref->c);
+    unqualify_optional(pointed_type(type));
+}
+static int is_optional_type(CType *type)
+{
+    while (type->t & 0x0040)
+        type = pointed_type(type);
+    return !!(type->t & 0x0800);
+}
 static int type_qualifiers(CType *type)
 {
     while (type->t & 0x0040)
         type = pointed_type(type);
-    return type->t & (0x0100 | 0x0200 | 0x0400);
+    return type->t & (0x0100 | 0x0200 | 0x0400 | 0x0800);
 }
 static void mk_pointer(CType *type)
 {
     Sym *s;
     s = sym_push(0x20000000, type, 0, -1);
-    type->t = 5 | (type->t & (0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000));
+    type->t = 5 | (type->t & (0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000));
     type->ref = s;
 }
 static int is_compatible_types(CType *type1, CType *type2)
@@ -18440,7 +18475,7 @@ static void cast_error(CType *st, CType *dt)
 }
 static void verify_assign_cast(CType *dt)
 {
-    CType *st, *type1, *type2;
+    CType *st, *type1, *type2, ct;
     int dbt, sbt, qualwarn, lvl;
     st = &vtop->type;
     dbt = dt->t & 0x000f;
@@ -18466,13 +18501,18 @@ static void verify_assign_cast(CType *dt)
             type2 = st;
         else
             goto error;
+        if ((st->t & 0x0040) || sbt == 6) {
+            ct = *type2;
+            unqualify_optional(&ct);
+            type2 = &ct;
+        }
         if (is_compatible_types(type1, type2))
             break;
         for (qualwarn = lvl = 0;; ++lvl) {
-            if ((type2->t & ~type1->t) & (0x0100 | 0x0200 | 0x0400))
+            if ((type2->t & ~type1->t) & (0x0100 | 0x0200 | 0x0400 | 0x0800))
                 qualwarn = 1;
-            dbt = type1->t & (0x000f|0x1000);
-            sbt = type2->t & (0x000f|0x1000);
+            dbt = type1->t & (0x000f|0x2000);
+            sbt = type2->t & (0x000f|0x2000);
             if (dbt != 5 || sbt != 5)
                 break;
             type1 = pointed_type(type1);
@@ -18604,7 +18644,7 @@ static void vstore(void)
             gv(RC_TYPE(dbt));
             if (delayed_cast) {
                 vtop->r |= ((unsigned)((0x0C00) & ~((0x0C00) << 1)) * ((sbt == 4) + 1));
-                vtop->type.t = ft & (~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)|(((1U << (6+6)) - 1) << 20 | 0x0080)));
+                vtop->type.t = ft & (~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)|(((1U << (6+6)) - 1) << 20 | 0x0080)));
             }
             if ((vtop[-1].r & 0x003f) == 0x0031) {
                 SValue sv;
@@ -19099,7 +19139,7 @@ static void struct_decl(CType *type, int u)
             if (!parse_btype(&btype, &ad1, 0)
              || !is_integer_btype(btype.t & 0x000f))
                 expect("enum type");
-            bt = ut = btype.t & (0x000f|0x1000|0x0010|0x0020);
+            bt = ut = btype.t & (0x000f|0x2000|0x0010|0x0020);
         }
     }
     if (v) {
@@ -19135,9 +19175,9 @@ do_decl:
 	    CType t;
             t.ref = s;
             s->sym_scope = local_scope;
-            t.t = 3|0x00004000|(3 << 20);
+            t.t = 3|0x00008000|(3 << 20);
             if (bt)
-                t.t = bt|0x00004000|(3 << 20);
+                t.t = bt|0x00008000|(3 << 20);
             for(;;) {
                 v = tok;
                 if (v < TOK_DEFINE)
@@ -19173,10 +19213,10 @@ do_decl:
             t.t = 3;
             if (nl >= 0) {
                 if (pl != (unsigned)pl)
-                    t.t = (4==8 ? 4|0x1000 : 4);
+                    t.t = (4==8 ? 4|0x2000 : 4);
                 t.t |= 0x0010;
             } else if (pl != (int)pl || nl != (int)nl)
-                t.t = (4==8 ? 4|0x1000 : 4);
+                t.t = (4==8 ? 4|0x2000 : 4);
             for (ss = s->next; ss; ss = ss->next) {
                 ll = ss->enum_val;
                 if (ll == (int)ll)
@@ -19187,7 +19227,7 @@ do_decl:
                         continue;
                 }
                 ss->type.t = (ss->type.t & ~0x000f)
-                    | (4==8 ? 4|0x1000 : 4);
+                    | (4==8 ? 4|0x2000 : 4);
             }
             s->c = 1;
         enum_done:
@@ -19225,6 +19265,9 @@ do_decl:
 				}
                     	    }
                         }
+                        if (is_optional_type(&type1))
+                            _tcc_error("field '%s' has optional-qualified type",
+                                      get_tok_str(v, ((void*)0)));
                         if (type_size(&type1, &align) < 0) {
 			    if ((u == 7) && (type1.t & 0x0040) && c)
 			        flexible = 1;
@@ -19234,7 +19277,7 @@ do_decl:
                         }
                         if ((type1.t & 0x000f) == 6 ||
 			    (type1.t & 0x000f) == 0 ||
-                            (type1.t & (0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)))
+                            (type1.t & (0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)))
                             _tcc_error("invalid type for '%s'",
                                   get_tok_str(v, ((void*)0)));
                     }
@@ -19343,7 +19386,7 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
         basic_type:
             next();
         basic_type1:
-            if (u == 2 || u == 0x1000) {
+            if (u == 2 || u == 0x2000) {
                 if (st != -1 || (bt != -1 && bt != 3))
                     tmbt: _tcc_error("too many basic types");
                 st = u;
@@ -19355,7 +19398,7 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
                 bt = u;
             }
             if (u != 3)
-                t = (t & ~(0x000f|0x1000)) | u;
+                t = (t & ~(0x000f|0x2000)) | u;
             typespec_found = 1;
             break;
         case TOK_VOID:
@@ -19390,11 +19433,11 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
             continue;
         case TOK_LONG:
             if ((t & 0x000f) == 9) {
-                t = (t & ~(0x000f|0x1000)) | 10;
-            } else if ((t & (0x000f|0x1000)) == 0x1000) {
-                t = (t & ~(0x000f|0x1000)) | 4;
+                t = (t & ~(0x000f|0x2000)) | 10;
+            } else if ((t & (0x000f|0x2000)) == 0x2000) {
+                t = (t & ~(0x000f|0x2000)) | 4;
             } else {
-                u = 0x1000;
+                u = 0x2000;
                 goto basic_type;
             }
             next();
@@ -19408,8 +19451,8 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
             u = 8;
             goto basic_type;
         case TOK_DOUBLE:
-            if ((t & (0x000f|0x1000)) == 0x1000) {
-                t = (t & ~(0x000f|0x1000)) | 10;
+            if ((t & (0x000f|0x2000)) == 0x2000) {
+                t = (t & ~(0x000f|0x2000)) | 10;
             } else {
                 u = 9;
                 goto basic_type;
@@ -19435,11 +19478,17 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
             t = type->t;
             if (tok == '(') {
                 parse_expr_type(&type1);
-                type1.t &= ~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)&~0x00008000);
+                type1.t &= ~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)&~0x00010000);
                 if (type1.ref)
                     sym_to_attr(ad, type1.ref);
                 goto basic_type2;
             }
+            break;
+        case TOK_OPTIONAL:
+            type->t = t;
+            parse_btype_qualify(type, 0x0800);
+            t = type->t;
+            next();
             break;
         case TOK_CONST1:
         case TOK_CONST2:
@@ -19484,16 +19533,16 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
             typespec_found = 1;
             break;
         case TOK_EXTERN:
-            g = 0x00002000;
-            goto storage;
-        case TOK_STATIC:
             g = 0x00004000;
             goto storage;
-        case TOK_TYPEDEF:
+        case TOK_STATIC:
             g = 0x00008000;
             goto storage;
+        case TOK_TYPEDEF:
+            g = 0x00010000;
+            goto storage;
        storage:
-            if (t & (0x00002000|0x00004000|0x00008000) & ~g)
+            if (t & (0x00004000|0x00008000|0x00010000) & ~g)
                 _tcc_error("multiple storage classes");
             t |= g;
             next();
@@ -19501,7 +19550,7 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
         case TOK_INLINE1:
         case TOK_INLINE2:
         case TOK_INLINE3:
-            t |= 0x00010000;
+            t |= 0x00020000;
             next();
             break;
         case TOK_NORETURN3:
@@ -19513,7 +19562,7 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
             parse_attribute(ad);
             if (ad->attr_mode) {
                 u = ad->attr_mode -1;
-                t = (t & ~(0x000f|0x1000)) | u;
+                t = (t & ~(0x000f|0x2000)) | u;
             }
             continue;
         case TOK_TYPEOF1:
@@ -19521,7 +19570,7 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
         case TOK_TYPEOF3:
             next();
             parse_expr_type(&type1);
-            type1.t &= ~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)&~0x00008000);
+            type1.t &= ~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)&~0x00010000);
             if (type1.ref) {
                 sym_to_attr(ad, type1.ref);
                 if (type1.t & 0x0040)
@@ -19530,25 +19579,25 @@ static int parse_btype(CType *type, AttributeDef *ad, int ignore_label)
             goto basic_type2;
         case TOK_THREAD_LOCAL:
         case TOK___thread:
-            if (t & 0x00020000)
+            if (t & 0x00040000)
                 _tcc_error("multiple thread-local storage specifiers");
-            t |= 0x00020000;
+            t |= 0x00040000;
             next();
             break;
         default:
             if (typespec_found)
                 goto the_end;
             s = sym_find(tok);
-            if (!s || !(s->type.t & 0x00008000))
+            if (!s || !(s->type.t & 0x00010000))
                 goto the_end;
             n = tok, next();
             if (tok == ':' && ignore_label) {
                 unget_tok(n);
                 goto the_end;
             }
-            t &= ~(0x000f|0x1000);
-            u = t & ~(0x0100 | 0x0200 | 0x0400), t ^= u;
-            type->t = (s->type.t & ~0x00008000) | u;
+            t &= ~(0x000f|0x2000);
+            u = t & ~(0x0100 | 0x0200 | 0x0400 | 0x0800), t ^= u;
+            type->t = (s->type.t & ~0x00010000) | u;
             type->ref = s->type.ref;
             if (t)
                 parse_btype_qualify(type, t);
@@ -19567,26 +19616,29 @@ the_end:
         if ((t & (0x0020|0x000f)) == 1)
             t |= 0x0010;
     }
-    bt = t & (0x000f|0x1000);
-    if (bt == 0x1000)
+    bt = t & (0x000f|0x2000);
+    if (bt == 0x2000)
         t |= 4 == 8 ? 4 : 3;
     if (bt == 10)
-        t = (t & ~(0x000f|0x1000)) | (9|0x1000);
+        t = (t & ~(0x000f|0x2000)) | (9|0x2000);
     type->t = t;
     check_restrict_type(type);
     return type_found;
 }
 static __inline void convert_parameter_type(CType *pt)
 {
-    pt->t &= ~(0x0040 | 0x0800);
+    pt->t &= ~(0x0040 | 0x1000);
     if ((pt->t & 0x000f) == 6) {
         mk_pointer(pt);
     }
 }
 static __inline void convert_expression_type(CType *pt)
 {
-    pt->t &= ~(0x0100 | 0x0200 | 0x0400);
+    int converts = (pt->t & 0x000f) == 6 || (pt->t & 0x0040);
+    pt->t &= ~(0x0100 | 0x0200 | 0x0400 | 0x0800);
     convert_parameter_type(pt);
+    if (converts)
+        unqualify_optional_target(pt);
 }
 static CString* parse_asm_str(void)
 {
@@ -19644,13 +19696,16 @@ static int post_type(CType *type, AttributeDef *ad, int storage, int td)
                         n |= 0x20000000;
                 } else {
                     n = tok;
-                    pt.t = 3 | 0x00002000;
+                    pt.t = 3 | 0x00004000;
                     pt.ref = ((void*)0);
                     next();
                 }
                 if (n < TOK_DEFINE)
                     expect("identifier");
                 convert_parameter_type(&pt);
+                if (is_optional_type(&pt))
+                    _tcc_error("parameter '%s' has optional-qualified type",
+                              get_tok_str(n & ~0x20000000, ((void*)0)));
                 arg_size += (type_size(&pt, &align) + 8 - 1) / 8;
                 s = sym_push(n, &pt, 0x0032|0x0100, 0);
                 *plast = s;
@@ -19669,7 +19724,7 @@ static int post_type(CType *type, AttributeDef *ad, int storage, int td)
         } else
             l = 2;
         skip(')');
-        type->t &= ~(0x0100 | 0x0200 | 0x0400);
+        type->t &= ~(0x0100 | 0x0200 | 0x0400 | 0x0800);
         if (tok == '[') {
             next();
             skip(']');
@@ -19693,6 +19748,10 @@ static int post_type(CType *type, AttributeDef *ad, int storage, int td)
         t1 = 0;
         if (td & 4) while (1) {
 	    switch (tok) {
+	    case TOK_OPTIONAL:
+		array_qualifiers |= 0x0800;
+		next();
+		continue;
 	    case TOK_CONST1: case TOK_CONST2: case TOK_CONST3:
 		array_qualifiers |= 0x0100;
 		next();
@@ -19726,7 +19785,7 @@ static int post_type(CType *type, AttributeDef *ad, int storage, int td)
             }
             break;
 	} else if (tok != ']') {
-            if (!local_stack || (storage & 0x00004000))
+            if (!local_stack || (storage & 0x00008000))
                 vpushi(expr_const());
             else {
 		nocode_wanted = 0;
@@ -19741,7 +19800,7 @@ check:
                 if (!is_integer_btype(vtop->type.t & 0x000f))
                     _tcc_error("size of variable length array should be an integer");
                 n = 0;
-                t1 = 0x0800;
+                t1 = 0x1000;
             }
         }
         skip(']');
@@ -19751,8 +19810,8 @@ check:
         if ((type->t & 0x000f) == 0
             || type_size(type, &align) < 0)
             _tcc_error("declaration of an array of incomplete type elements");
-        t1 |= type->t & 0x0800;
-        if (t1 & 0x0800) {
+        t1 |= type->t & 0x1000;
+        if (t1 & 0x1000) {
             if (n < 0) {
 		if  (td & 8)
                     _tcc_error("need explicit inner array size in VLAs");
@@ -19772,11 +19831,11 @@ check:
             vpop();
 	nocode_wanted = saved_nocode_wanted;
         s = sym_push(0x20000000, type, 0, n);
-        type->t = (t1 ? 0x0800 : 0x0040) | 5;
+        type->t = (t1 ? 0x1000 : 0x0040) | 5;
         type->ref = s;
         type->t |= array_qualifiers;
         if (vla_array_str) {
-	    if ((t1 & 0x0800) && (td & 8))
+	    if ((t1 & 0x1000) && (td & 8))
 	        s->vla_array_str = vla_array_str;
 	    else
 	        tok_str_free_str(vla_array_str);
@@ -19788,8 +19847,8 @@ static CType *type_decl(CType *type, AttributeDef *ad, int *v, int td)
 {
     CType *post, *ret;
     int qualifiers, storage;
-    storage = type->t & (0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000);
-    type->t &= ~(0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000);
+    storage = type->t & (0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000);
+    type->t &= ~(0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000);
     post = ret = type;
     while (tok == '*') {
         qualifiers = 0;
@@ -19798,6 +19857,9 @@ static CType *type_decl(CType *type, AttributeDef *ad, int *v, int td)
         switch(tok) {
         case TOK__Atomic:
             qualifiers |= 0x0200;
+            goto redo;
+        case TOK_OPTIONAL:
+            qualifiers |= 0x0800;
             goto redo;
         case TOK_CONST1:
         case TOK_CONST2:
@@ -19857,7 +19919,7 @@ static void indir(void)
     if (vtop->r & 0x0100)
         gv(0x0001);
     vtop->type = *pointed_type(&vtop->type);
-    if (!(vtop->type.t & (0x0040 | 0x0800))
+    if (!(vtop->type.t & (0x0040 | 0x1000))
         && (vtop->type.t & 0x000f) != 6) {
         vtop->r |= 0x0100;
     }
@@ -20111,14 +20173,14 @@ static void unary(void)
         t = 9;
 	goto push_tokc;
     case 0xcc:
-        t = 9 | 0x1000;
+        t = 9 | 0x2000;
         tokc.d = tokc.ld;
 	goto push_tokc;
     case 0xc6:
-        t = (4 == 8 ? 4 : 3) | 0x1000;
+        t = (4 == 8 ? 4 : 3) | 0x2000;
 	goto push_tokc;
     case 0xc7:
-        t = (4 == 8 ? 4 : 3) | 0x1000 | 0x0010;
+        t = (4 == 8 ? 4 : 3) | 0x2000 | 0x0010;
 	goto push_tokc;
     case TOK___FUNCTION__:
         if (!tcc_state->gnu_ext)
@@ -20154,6 +20216,8 @@ static void unary(void)
             type_decl(&type, &ad, &n, 1);
             skip(')');
             if (tok == '{') {
+                if (is_optional_type(&type))
+                    _tcc_error("compound literal has optional-qualified type");
                 if (global_expr)
                     r = 0x0030;
                 else
@@ -20195,10 +20259,11 @@ static void unary(void)
         next();
         unary();
         if ((vtop->type.t & 0x000f) != 6 &&
-            !(vtop->type.t & (0x0040 | 0x0800)))
+            !(vtop->type.t & (0x0040 | 0x1000)))
             test_lvalue();
         if (vtop->sym)
           vtop->sym->a.addrtaken = 1;
+        unqualify_optional(&vtop->type);
         mk_pointer(&vtop->type);
         gaddrof();
         break;
@@ -20388,7 +20453,7 @@ static void unary(void)
         if ((s->type.t & 0x000f) != 5) {
             s->type.t = 0;
             mk_pointer(&s->type);
-            s->type.t |= 0x00004000;
+            s->type.t |= 0x00008000;
         }
         vpushsym(&s->type, s);
         next();
@@ -20508,7 +20573,7 @@ special_math_val:
             int qualifiers, cumofs;
             if (tok == 0xa0)
                 indir();
-            qualifiers = vtop->type.t & (0x0100 | 0x0200 | 0x0400);
+            qualifiers = vtop->type.t & (0x0100 | 0x0200 | 0x0400 | 0x0800);
             test_lvalue();
             next();
 	    s = find_field(&vtop->type, tok, &cumofs);
@@ -21552,7 +21617,7 @@ static void init_assert(init_params *p, int offset)
 {
     if (p->sec ? !(nocode_wanted > 0) && offset > p->sec->data_offset
                : !nocode_wanted && offset > p->local_offset)
-        _tcc_error("internal compiler error in %s:%d: %s", __FUNCTION__,7661,"initializer overflow");
+        _tcc_error("internal compiler error in %s:%d: %s", __FUNCTION__,7731,"initializer overflow");
 }
 static void init_putz(init_params *p, unsigned long c, int size)
 {
@@ -22131,7 +22196,7 @@ static void decl_initializer_alloc(CType *type, AttributeDef *ad, int r,
         is_const = tp->t & 0x0100;
         sec = ad->section;
         if (!sec) {
-            if (type->t & 0x00020000) {
+            if (type->t & 0x00040000) {
                 sec = find_section(tcc_state, has_init ? ".tdata" : ".tbss");
                 sec->sh_flags = (1 << 1) | (1 << 0) | (1 << 10);
                 sec->sh_type = has_init ? 1 : 8;
@@ -22166,7 +22231,7 @@ static void decl_initializer_alloc(CType *type, AttributeDef *ad, int r,
 	    vtop->r |= r;
         }
     }
-    if (type->t & 0x0800) {
+    if (type->t & 0x1000) {
         int a;
         if (has_init)
             _tcc_error("variable length array cannot be initialized");
@@ -22205,7 +22270,7 @@ static void func_vla_arg_code(Sym *arg)
     TokenString *vla_array_tok = ((void*)0);
     if (arg->type.ref)
         func_vla_arg_code(arg->type.ref);
-    if ((arg->type.t & 0x0800) && arg->type.ref->vla_array_str) {
+    if ((arg->type.t & 0x1000) && arg->type.ref->vla_array_str) {
 	loc -= type_size(&int_type, &align);
 	loc &= -align;
 	arg->type.ref->c = loc;
@@ -22229,7 +22294,7 @@ static void func_vla_arg(Sym *sym)
 {
     Sym *arg;
     for (arg = sym->type.ref->next; arg; arg = arg->next)
-        if ((arg->type.t & 0x000f) == 5 && (arg->type.ref->type.t & 0x0800))
+        if ((arg->type.t & 0x000f) == 5 && (arg->type.ref->type.t & 0x1000))
             func_vla_arg_code(arg->type.ref);
 }
 static Sym *gfunc_set_param(Sym *s, int c, int byref)
@@ -22318,7 +22383,7 @@ static void gen_inline_functions(TCCState *s)
         for (i = 0; i < s->nb_inline_fns; ++i) {
             fn = s->inline_fns[i];
             sym = fn->sym;
-            if (sym && (sym->c || !(sym->type.t & 0x00010000))) {
+            if (sym && (sym->c || !(sym->type.t & 0x00020000))) {
                 fn->sym = ((void*)0);
                 tccpp_putfile(fn->filename);
                 begin_macro(fn->func_str, 1);
@@ -22363,9 +22428,9 @@ static void pe_check_linkage(CType *type, AttributeDef *ad)
 {
     if (!ad->a.dllimport && !ad->a.dllexport)
         return;
-    if (type->t & 0x00004000)
+    if (type->t & 0x00008000)
         _tcc_error("cannot have dll linkage with static");
-    if (type->t & 0x00008000) {
+    if (type->t & 0x00010000) {
         const char *m = ad->a.dllimport ? "im" : "ex";
         _tcc_warning("'dll%sport' attribute ignored for typedef", m);
         ad->a.dllimport = 0;
@@ -22374,7 +22439,7 @@ static void pe_check_linkage(CType *type, AttributeDef *ad)
         if ((type->t & 0x000f) == 6)
             ad->a.dllimport = 0;
         else
-            type->t |= 0x00002000;
+            type->t |= 0x00004000;
     }
 }
 static int decl(int l)
@@ -22429,8 +22494,11 @@ static int decl(int l)
             type = btype;
 	    ad = adbase;
             type_decl(&type, &ad, &v, l == 0x0033 ? 2 | 4 : 2);
+            if (!(type.t & 0x00010000) && is_optional_type(&type))
+                _tcc_error("'%s' has optional-qualified type",
+                          get_tok_str(v, ((void*)0)));
             if ((type.t & 0x000f) == 6) {
-                if ((type.t & 0x00004000) && (l != 0x0030))
+                if ((type.t & 0x00008000) && (l != 0x0030))
                     _tcc_error("function without file scope cannot be static");
                 sym = type.ref;
                 if (sym->f.func_type == 2 && l == 0x0030) {
@@ -22439,11 +22507,11 @@ static int decl(int l)
                     decl(0x0033);
 		    --local_scope;
                 }
-                if ((type.t & (0x00002000|0x00010000)) == (0x00002000|0x00010000)) {
+                if ((type.t & (0x00004000|0x00020000)) == (0x00004000|0x00020000)) {
                     if (tcc_state->gnu89_inline || sym->f.func_alwinl)
-                        type.t = (type.t & ~0x00002000) | 0x00004000;
+                        type.t = (type.t & ~0x00004000) | 0x00008000;
                     else
-                        type.t &= ~0x00010000;
+                        type.t &= ~0x00020000;
                 }
             } else if (oldint) {
                 _tcc_warning("type defaults to int");
@@ -22459,7 +22527,7 @@ static int decl(int l)
                 if ((type.t & 0x000f) != 6)
                     expect("function definition");
                 merge_funcattr(&type.ref->f, &ad.f);
-                type.t &= ~0x00002000;
+                type.t &= ~0x00004000;
                 sym = external_sym(v, &type, 0, &ad);
                 for (sa = sym->type.ref; (sa = sa->next) != ((void*)0);) {
                     if (!(sa->v & ~0x20000000))
@@ -22469,7 +22537,7 @@ static int decl(int l)
                         sa->type.t = 9;
                     }
                 }
-                if (sym->type.t & 0x00010000) {
+                if (sym->type.t & 0x00020000) {
                     struct InlineFunc *fn;
                     fn = tcc_malloc(sizeof *fn + strlen(file->filename));
                     strcpy(fn->filename, file->filename);
@@ -22496,19 +22564,19 @@ static int decl(int l)
 		    _tcc_error("declaration for parameter '%s' but no such parameter",
 			      get_tok_str(v, ((void*)0)));
                 found:
-		    if (type.t & (0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000))
+		    if (type.t & (0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000))
 		        _tcc_error("storage class specified for '%s'",
 				  get_tok_str(v, ((void*)0)));
-		    if (!(sym->type.t & 0x00002000))
+		    if (!(sym->type.t & 0x00004000))
 		        _tcc_error("redefinition of parameter '%s'",
 				  get_tok_str(v, ((void*)0)));
 		    convert_parameter_type(&type);
 		    sym->type = type;
-		} else if (type.t & 0x00008000) {
+		} else if (type.t & 0x00010000) {
                     sym = sym_find(v);
                     if (sym && sym->sym_scope == local_scope) {
                         if (!is_compatible_types(&sym->type, &type)
-                            || !(sym->type.t & 0x00008000))
+                            || !(sym->type.t & 0x00010000))
                             _tcc_error("incompatible redefinition of '%s'",
                                 get_tok_str(v, ((void*)0)));
                         sym->type = type;
@@ -22521,7 +22589,7 @@ static int decl(int l)
                     if (debug_modes)
                         tcc_debug_typedef (tcc_state, sym);
 		} else if ((type.t & 0x000f) == 0
-			   && !(type.t & 0x00002000)) {
+			   && !(type.t & 0x00004000)) {
 		    _tcc_error("declaration of void object");
                 } else {
                     r = 0;
@@ -22532,23 +22600,23 @@ static int decl(int l)
                     }
                     if (tok == '=')
                         has_init = 1;
-                    if (((type.t & 0x00002000) && (!has_init || l != 0x0030))
+                    if (((type.t & 0x00004000) && (!has_init || l != 0x0030))
 		        || (type.t & 0x000f) == 6
                         || ((type.t & 0x0040) && !has_init
                             && l == 0x0030 && type.ref->c < 0)
                         ) {
-                        type.t |= 0x00002000;
+                        type.t |= 0x00004000;
                         external_sym(v, &type, r, &ad);
                     } else {
-                        if (l == 0x0030 || (type.t & 0x00004000))
+                        if (l == 0x0030 || (type.t & 0x00008000))
                             r |= 0x0030;
                         else
                             r |= 0x0032;
-                        type.t &= ~0x00002000;
+                        type.t &= ~0x00004000;
                         if (has_init)
                             next();
                         else if (l == 0x0030)
-                            type.t |= 0x00002000;
+                            type.t |= 0x00004000;
                         decl_initializer_alloc(&type, &ad, r, has_init, v, l);
                     }
                     if (ad.alias_target && l == 0x0030) {
@@ -22579,9 +22647,9 @@ static const struct {
 } default_debug[] = {
     {   3, 4, DW_ATE_signed, "int:t1=r1;-2147483648;2147483647;" },
     {   1, 1, DW_ATE_signed_char, "char:t2=r2;0;127;" },
-    {   0x1000 | 3, 4, DW_ATE_signed, "long int:t3=r3;-2147483648;2147483647;" },
+    {   0x2000 | 3, 4, DW_ATE_signed, "long int:t3=r3;-2147483648;2147483647;" },
     {   3 | 0x0010, 4, DW_ATE_unsigned, "unsigned int:t4=r4;0;037777777777;" },
-    {   0x1000 | 3 | 0x0010, 4, DW_ATE_unsigned, "long unsigned int:t5=r5;0;037777777777;" },
+    {   0x2000 | 3 | 0x0010, 4, DW_ATE_unsigned, "long unsigned int:t5=r5;0;037777777777;" },
     {   13, 16, DW_ATE_signed, "__int128:t6=r6;0;-1;" },
     {   13 | 0x0010, 16, DW_ATE_unsigned, "__int128 unsigned:t7=r7;0;-1;" },
     {   4, 8, DW_ATE_signed, "long long int:t8=r8;-9223372036854775808;9223372036854775807;" },
@@ -22592,7 +22660,7 @@ static const struct {
     {   1 | 0x0020 | 0x0010, 1, DW_ATE_unsigned_char, "unsigned char:t13=r13;0;255;" },
     {   8, 4, DW_ATE_float, "float:t14=r1;4;0;" },
     {   9, 8, DW_ATE_float, "double:t15=r1;8;0;" },
-    {   9 | 0x1000, 8, DW_ATE_float, "long double:t16=r1;8;0;" },
+    {   9 | 0x2000, 8, DW_ATE_float, "long double:t16=r1;8;0;" },
     {   -1, -1, -1, "_Float32:t17=r1;4;0;" },
     {   -1, -1, -1, "_Float64:t18=r1;8;0;" },
     {   -1, -1, -1, "_Float128:t19=r1;16;0;" },
@@ -23722,7 +23790,7 @@ static int stabs_struct_find(TCCState *s1, Sym *t, int *p_id)
 }
 static int remove_type_info(int type)
 {
-        type &= ~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000) | (0x0100 | 0x0200 | 0x0400) | 0x0800);
+        type &= ~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000) | (0x0100 | 0x0200 | 0x0400 | 0x0800) | 0x1000);
         if ((type & 0x000f) != 1)
             type &= ~0x0020;
         if (!(type & 0x0080) && (type & (((1U << (6+6)) - 1) << 20 | 0x0080)) > (2 << 20))
@@ -23999,7 +24067,7 @@ static int tcc_get_dwarf_info(TCCState *s1, Sym *s)
 	}
         else if (type == (5 | 0x0040)) {
 	    int sib_pos, sub_type;
-	    Sym sym = {0}; sym.type.t = 0x1000 | 3 | 0x0010;
+	    Sym sym = {0}; sym.type.t = 0x2000 | 3 | 0x0010;
 	    sub_type = tcc_get_dwarf_info(s1, &sym);
 	    i = s1->dwarf_info_section->data_offset;
 	    if (retval == debug_type)
@@ -24020,7 +24088,7 @@ static int tcc_get_dwarf_info(TCCState *s1, Sym *s)
 	        write32le(section_ptr_add((s1->dwarf_info_section), 4), (sub_type - s1->dState->dwarf_info.start));
 	        dwarf_uleb128(s1->dwarf_info_section, t->type.ref->c - 1);
 		s = t->type.ref;
-		type = s->type.t & ~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000) | (0x0100 | 0x0200 | 0x0400));
+		type = s->type.t & ~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000) | (0x0100 | 0x0200 | 0x0400 | 0x0800));
 		if (type != (5 | 0x0040))
 		    break;
 		t = s;
@@ -24209,7 +24277,7 @@ static void tcc_debug_funcstart(TCCState *s1, Sym *sym)
     else
     {
         cstr_new (&debug_str);
-        cstr_printf(&debug_str, "%s:%c", funcname, sym->type.t & 0x00004000 ? 'f' : 'F');
+        cstr_printf(&debug_str, "%s:%c", funcname, sym->type.t & 0x00008000 ? 'f' : 'F');
         tcc_get_debug_info(s1, sym->type.ref, &debug_str);
         put_stabs_r(s1, debug_str.data, N_FUN, 0, f->line_num, 0, s1->cur_text_section, sym->c);
         cstr_free (&debug_str);
@@ -24239,8 +24307,8 @@ static void tcc_debug_funcend(TCCState *s1, int size)
         int func_sib = 0;
 	Sym *sym = s1->dState->dwarf_info.func;
 	int n_debug_info = tcc_get_dwarf_info(s1, sym->type.ref);
-        (*(uint8_t*)section_ptr_add((s1->dwarf_info_section), 1) = (sym->type.t & 0x00004000 ? 21 : 20));
-        if ((sym->type.t & 0x00004000) == 0)
+        (*(uint8_t*)section_ptr_add((s1->dwarf_info_section), 1) = (sym->type.t & 0x00008000 ? 21 : 20));
+        if ((sym->type.t & 0x00008000) == 0)
             (*(uint8_t*)section_ptr_add((s1->dwarf_info_section), 1) = (1));
         dwarf_strp(s1->dwarf_info_section, funcname);
         dwarf_uleb128(s1->dwarf_info_section, s1->dState->dwarf_line.cur_file);
@@ -24303,7 +24371,7 @@ static void tcc_debug_extern_sym(TCCState *s1, Sym *sym, int sh_num, int sym_bin
             tcc_debug_stabs(s1, str.data, N_GSYM, 0, ((void*)0), 0, 0);
         else
             tcc_debug_stabs(s1, str.data,
-                (sym->type.t & 0x00004000) && s1->data_section == s
+                (sym->type.t & 0x00008000) && s1->data_section == s
                 ? N_STSYM : N_LCSYM, 0, s, sym->c, 0);
         cstr_free (&str);
     }
@@ -24386,7 +24454,7 @@ static void tcc_tcov_block_begin(TCCState *s1)
         s1->dState->tcov_data.offset = last_offset;
     else {
         Sym label = {0};
-        label.type.t = 4 | 0x00004000;
+        label.type.t = 4 | 0x00008000;
         ptr = section_ptr_add(s1->tcov_section, 16);
         s1->dState->tcov_data.line = file->line_num;
         write64le (ptr, (s1->dState->tcov_data.line << 8) | 0xff);
@@ -24506,14 +24574,14 @@ static Sym *asm_label_find(int v)
     int addeddot;
     v = asm2cname(v, &addeddot);
     sym = sym_find(v);
-    while (sym && sym->sym_scope && !(sym->type.t & 0x00004000))
+    while (sym && sym->sym_scope && !(sym->type.t & 0x00008000))
         sym = sym->prev_tok;
     return sym;
 }
 static Sym *asm_label_push(int v)
 {
     int addeddot, v2 = asm2cname(v, &addeddot);
-    Sym *sym = global_identifier_push(v2, (0 | 4 << 20) | 0x00002000 | 0x00004000, 0);
+    Sym *sym = global_identifier_push(v2, (0 | 4 << 20) | 0x00004000 | 0x00008000, 0);
     if (addeddot)
         sym->asm_label = v;
     return sym;
@@ -24800,9 +24868,9 @@ static Sym* asm_new_label1(TCCState *s1, int label, int is_local,
 	esym = elfsym(sym);
         if (esym && esym->st_shndx != 0) {
             if ((((sym)->type.t & ((0x000f|(((1U << (6+6)) - 1) << 20 | 0x0080)) & ~(1<<20))) == (0 | 4 << 20))
-                && (is_local == 1 || (sym->type.t & 0x00002000)))
+                && (is_local == 1 || (sym->type.t & 0x00004000)))
                 goto new_label;
-            if (!(sym->type.t & 0x00002000))
+            if (!(sym->type.t & 0x00004000))
                 _tcc_error("assembler label '%s' already defined",
                           get_tok_str(label, ((void*)0)));
         }
@@ -24816,7 +24884,7 @@ static Sym* asm_new_label1(TCCState *s1, int label, int is_local,
     esym->st_shndx = sh_num;
     esym->st_value = value;
     if (is_local != 2)
-        sym->type.t &= ~0x00002000;
+        sym->type.t &= ~0x00004000;
     return sym;
 }
 static Sym* asm_new_label(TCCState *s1, int label, int is_local)
@@ -25061,7 +25129,7 @@ static void asm_parse_directive(TCCState *s1, int global)
 		expect("identifier");
             sym = get_asm_sym(tok, ((void*)0));
 	    if (tok1 != TOK_ASMDIR_hidden)
-                sym->type.t &= ~0x00004000;
+                sym->type.t &= ~0x00008000;
             if (tok1 == TOK_ASMDIR_weak)
                 sym->a.weak = 1;
 	    else if (tok1 == TOK_ASMDIR_hidden)
@@ -27085,7 +27153,7 @@ static void gen_gotpcrel(int r, Sym *sym, int c)
 static void gen_modrm_impl(int opcode, int ll, int op_reg_0, int r, Sym *sym, int c)
 {
     int op_reg = ((op_reg_0) & 7) << 3;
-    if ((r & 0x0200) && (sym->type.t & 0x00020000)) {
+    if ((r & 0x0200) && (sym->type.t & 0x00040000)) {
         Sym *s2 = external_global_sym(TOK___tls_index, &int_type);
         r = get_reg(0x0001);
         gen_modrm_impl(0x8B, 0,  r, 0x0200|0x0030, s2, 0);
@@ -27138,7 +27206,7 @@ void load(int r, SValue *sv)
     int v, t, ft, fc, fr;
     SValue v1;
     fr = sv->r;
-    ft = sv->type.t & ~(0x0020|(0x0100 | 0x0200 | 0x0400));
+    ft = sv->type.t & ~(0x0020|(0x0100 | 0x0200 | 0x0400 | 0x0800));
     fc = sv->c.i;
     if (fc != sv->c.i && (fr & 0x0200))
       _tcc_error("64 bit addend in load");
@@ -27188,15 +27256,15 @@ void load(int r, SValue *sv)
             r = ((r) & 7);
         } else if ((ft & 0x000f) == 10) {
             b = 0xdb, r = 5;
-        } else if ((ft & (~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == 1 || (ft & (~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == 11) {
+        } else if ((ft & (~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == 1 || (ft & (~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == 11) {
             b = 0xbe0f;
-        } else if ((ft & (~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == (1 | 0x0010)) {
+        } else if ((ft & (~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == (1 | 0x0010)) {
             b = 0xb60f;
-        } else if ((ft & (~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == 2) {
+        } else if ((ft & (~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == 2) {
             b = 0xbf0f;
-        } else if ((ft & (~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == (2 | 0x0010)) {
+        } else if ((ft & (~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == (2 | 0x0010)) {
             b = 0xb70f;
-        } else if ((ft & (~((0x00002000 | 0x00004000 | 0x00008000 | 0x00010000 | 0x00020000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == (0)) {
+        } else if ((ft & (~((0x00004000 | 0x00008000 | 0x00010000 | 0x00020000 | 0x00040000)|(((1U << (6+6)) - 1) << 20 | 0x0080)))) == (0)) {
             return;
         } else {
             ((((ft & 0x000f) == 3) || ((ft & 0x000f) == 4) || ((ft & 0x000f) == 5) || ((ft & 0x000f) == 6)) ? (void)0 : _assert("((ft & VT_BTYPE) == VT_INT) || ((ft & VT_BTYPE) == VT_LLONG) || ((ft & VT_BTYPE) == VT_PTR) || ((ft & VT_BTYPE) == VT_FUNC)", "x86_64-gen.c", 472));
@@ -33415,7 +33483,7 @@ static const char help2[] =
     ;
 static const char version[] =
     "tcc version ""0.9.28rc"
-    " ""9374fd6f04a8bb8eb68e1a80120713d70d110c5b"
+    " ""874910c61d28514e2a522bfe6bb42233f429b7e6"
     " ("
         "x86_64"
         " Windows"
