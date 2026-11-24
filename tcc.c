@@ -33470,7 +33470,7 @@ static const char help2[] =
     ;
 static const char version[] =
     "tcc version ""0.9.28rc"
-    " ""9f13dca8720d9bd350484fe5d250a366265e427e"
+    " ""70a6ab601fef06e7b66bbea662f544b4488ff8e3"
     " ("
         "x86_64"
         " Windows"
