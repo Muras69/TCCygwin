@@ -1,0 +1,445 @@
+### CHANGELOG & TECHNICAL IMPLEMENTATION NOTES ###
+
+======================================================================
+  1. HEADER FILES AND CYGWIN VERSION COMPATIBILITY
+======================================================================
+
+The original header files have been restored from the corresponding
+Cygwin development packages, ensuring that each build uses headers
+matching its intended Cygwin version.
+
+  - cygwin-devel-3.6.12-1-x86_64.tar.xz
+  - cygwin-devel-3.7.0-0.655.g2158d1470ced-x86_64.tar.xz
+
+Additional header files have been introduced, and TinyCC has been
+built with the required modifications. The resulting tcc.c source
+file has also been generated and adapted specifically for integration
+with cygwin1.dll.
+
+The implementation is based on the TinyCC mob branch.
+
+----------------------------------------------------------------------
+  1.1. TinyCC Header Files
+----------------------------------------------------------------------
+
+The following header files have been added:
+
+  float.h
+  stdalign.h
+  stdarg.h
+  stdbool.h
+  stddef.h
+  stdnoreturn.h
+  varargs.h
+
+The following header is built into the compiler:
+
+  tccdefs.h
+
+The original Cygwin versions of the following headers have been
+replaced with their TinyCC counterparts:
+
+  stdatomic.h
+  tgmath.h
+
+These replacements provide the header definitions expected by
+TinyCC and ensure compatibility with its implementation.
+
+----------------------------------------------------------------------
+  1.2. _Optional Support
+----------------------------------------------------------------------
+
+Support for _Optional has been reverted at the request of gz8cx4.
+
+Reference information:
+
+  Branch: mob
+  Commit: 70a6ab601fef06e7b66bbea662f544b4488ff8e3
+  Source:
+  https://repo.or.cz/tinycc.git/snapshot/e9e9e7f6236895a32c5e905aada486bab6671e95.tar.gz
+
+----------------------------------------------------------------------
+  1.3. pthread.h Modifications
+----------------------------------------------------------------------
+
+The pthread.h header has been modified to handle differences between
+regular application code and Cygwin DLL internal C++ code.
+
+The following implementation has been introduced:
+
+  /* This condition matches the one in <sys/_pthreadtypes.h> */
+  #if !defined(__INSIDE_CYGWIN__) || !defined(__cplusplus)
+
+  /* Constants for initializer macros */
+  extern struct __pthread_mutex_t __pthread_recursive_mutex_initializer_np;
+  extern struct __pthread_mutex_t __pthread_normal_mutex_initializer_np;
+  extern struct __pthread_mutex_t __pthread_errorcheck_mutex_initializer_np;
+  extern struct __pthread_cond_t __pthread_cond_initializer;
+  extern struct __pthread_rwlock_t __pthread_rwlock_initializer;
+
+  #define PTHREAD_COND_INITIALIZER (&__pthread_cond_initializer)
+  #define PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP (&__pthread_recursive_mutex_initializer_np)
+  #define PTHREAD_NORMAL_MUTEX_INITIALIZER_NP (&__pthread_normal_mutex_initializer_np)
+  #define PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP (&__pthread_errorcheck_mutex_initializer_np)
+  #define PTHREAD_RWLOCK_INITIALIZER (&__pthread_rwlock_initializer)
+
+  #else
+
+  /* Inside the Cygwin DLL's C++ code, using absolute linker symbols sometimes
+     results in "relocation truncated to fit" errors due to being built with
+     -mcmodel=small. */
+
+  #define PTHREAD_COND_INITIALIZER (pthread_cond_t)21
+  #define PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP (pthread_mutex_t)18
+  #define PTHREAD_NORMAL_MUTEX_INITIALIZER_NP (pthread_mutex_t)19
+  #define PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP (pthread_mutex_t)20
+  #define PTHREAD_RWLOCK_INITIALIZER (pthread_rwlock_t)22
+
+  #endif
+
+The original implementation uses external initializer symbols.
+However, when building the Cygwin DLL itself, references to absolute
+linker symbols can cause relocation errors:
+
+  relocation truncated to fit
+
+This is related to the use of the -mcmodel=small code model.
+
+To avoid this issue, the internal C++ build of the Cygwin DLL uses
+the corresponding integer-based initializer values instead.
+
+For regular application builds, the original external initializer
+symbols and definitions remain in use.
+
+All other original header files remain unchanged.
+
+======================================================================
+  2. VERSION-SPECIFIC HEADER AND DEFINITION SETS
+======================================================================
+
+The following version-specific files and directories have been
+introduced:
+
+  INCLUDE_36UNDEF
+  INCLUDE_37UNDEF
+
+  CYGWIN1_36UNDEF.def
+  CYGWIN1_37UNDEF.def
+
+The purpose of these directories and files is to maintain separate
+header and symbol definitions for different Cygwin versions.
+
+----------------------------------------------------------------------
+  2.1. INCLUDE_36UNDEF and INCLUDE_37UNDEF
+----------------------------------------------------------------------
+
+INCLUDE_37UNDEF contains the differences between the header files
+provided by the following packages:
+
+  - cygwin-devel-3.6.12-1-x86_64
+  - cygwin-devel-3.7.0-0.655.g2158d1470ced-x86_64
+
+The comparison excludes stdatomic.h, which is supplied by TinyCC.
+
+The corresponding INCLUDE_36UNDEF and INCLUDE_37UNDEF directories
+allow the build process to use the appropriate header set for the
+selected Cygwin version.
+
+----------------------------------------------------------------------
+  2.2. Purpose of the UNDEF Naming Convention
+----------------------------------------------------------------------
+
+The UNDEF naming convention is intended to simplify maintenance
+and updates as new Cygwin package versions are released.
+
+Cygwin development packages are updated relatively frequently.
+However, a new package version does not necessarily introduce
+changes to all header files or exported definitions.
+
+In some cases, only the package version number changes while the
+actual contents remain identical. This is normal and does not
+require unnecessary replacement of unchanged files.
+
+The UNDEF structure makes it possible to update only the files
+that have actually changed.
+
+The version-specific contents are selected during the build
+process through the BUILD_TCCygwin.bat script.
+
+This approach avoids repeatedly deleting and re-adding files
+to Git whenever a new Cygwin package version is introduced.
+
+The same maintenance principle applies to:
+
+  - Header files
+  - CYGWIN_VERSION_DLL_
+  - CYGWIN_VERSION_API_
+
+----------------------------------------------------------------------
+  2.3. Version Selection and Generated Definitions
+----------------------------------------------------------------------
+
+The CYGWIN1_36UNDEF.def and CYGWIN1_37UNDEF.def definition files
+are generated from the corresponding cygwin1.dll versions.
+
+The selected version is determined by the version currently
+configured in:
+
+  BUILD_TCCygwin.bat
+
+The same version-selection mechanism applies to the corresponding
+INCLUDE_36UNDEF and INCLUDE_37UNDEF header sets.
+
+This allows the build scripts to select the appropriate files
+without requiring manual changes to the directory structure
+for every new Cygwin release.
+
+======================================================================
+  3. CRT STARTUP CODE AND INITIALIZATION
+======================================================================
+
+A significant change has been made to crt0.c.
+
+The implementation has been simplified, and the per_process
+structure has been checked and verified with regard to its size.
+
+The crt0.c implementation has also been reviewed.
+
+Additionally, strace has been tested and currently appears
+to work correctly.
+
+However, these tests should not be interpreted as confirmation
+that the entire startup and initialization implementation is
+fully correct.
+
+Further testing and verification are still necessary, particularly
+for different execution scenarios and runtime configurations.
+
+======================================================================
+  4. LIBTCC ADDITIONS AND RUNTIME SUPPORT
+======================================================================
+
+Additional source files have been introduced into the libtcc
+directory.
+
+These files provide functionality required by the compiler and
+its associated header files, extending the capabilities of the
+TinyCC build.
+
+The added components are described below.
+
+----------------------------------------------------------------------
+  4.1. Built-in Functions
+----------------------------------------------------------------------
+
+  builtin.c
+
+  Provides built-in compiler functionality and the associated
+  built-in function implementations.
+
+----------------------------------------------------------------------
+  4.2. Dynamic Library Support
+----------------------------------------------------------------------
+
+  dllcrt1.c
+  dllmain.c
+
+  Additional startup and initialization support required for
+  building dynamic libraries.
+
+----------------------------------------------------------------------
+  4.3. Compiler Runtime Functions
+----------------------------------------------------------------------
+
+  libtcc1.c
+
+  Provides compiler runtime functions that were previously
+  missing from the implementation.
+
+  The following functions have been added:
+
+    __floatundisf
+    __floatundidf
+    __floatundixf
+
+    __fixunssfdi
+    __fixsfdi
+    __fixunsdfdi
+    __fixdfdi
+    __fixunsxfdi
+    __fixxfdi
+
+  These functions provide the required floating-point and
+  integer conversion operations for the corresponding types.
+
+----------------------------------------------------------------------
+  4.4. Atomic Operations
+----------------------------------------------------------------------
+
+  stdatomic.c
+  atomic.S
+
+  Provides additional support for atomic operations, including
+  the required implementation and assembly-level components.
+
+----------------------------------------------------------------------
+  4.5. Windows-Specific Support
+----------------------------------------------------------------------
+
+  winex.c
+
+  Provides the implementation of the __faststorefence barrier.
+
+----------------------------------------------------------------------
+  4.6. Stack Allocation and Compiler Support
+----------------------------------------------------------------------
+
+  alloca.S
+
+  Provides stack allocation support.
+
+  chkstk.S
+
+  Provides internal stack-checking support required by the
+  compiler.
+
+----------------------------------------------------------------------
+  4.7. Compiler Bootstrap and Startup Files
+----------------------------------------------------------------------
+
+  crt1.c
+
+  Used exclusively for building the compiler and the bootstrap
+  process.
+
+  kernel32.def
+  msvcrt.def
+
+  Minimal definition files containing only the required entries
+  for building and bootstrapping the compiler.
+
+  These files are not intended to provide complete definitions
+  of the respective system libraries.
+
+======================================================================
+  5. EXAMPLES AND RUNTIME ENVIRONMENT
+======================================================================
+
+The example programs included in the project are intentionally
+simplified.
+
+They demonstrate the general approach to using cygwin1.dll
+and provide a basic reference for the implementation.
+
+However, correct operation of programs using cygwin1.dll requires
+more than simply linking against the DLL.
+
+The runtime environment must be configured appropriately,
+including:
+
+  - Correct PATH configuration.
+  - Proper environment variable handling.
+  - Appropriate runtime environment initialization.
+  - Correct directory structure.
+  - Proper handling of the required Cygwin runtime components.
+
+The Cygwin documentation provides information about these
+requirements, although its coverage is not particularly
+comprehensive, especially for the specific integration approach
+implemented in this project.
+
+Therefore, the examples should be treated as simplified
+demonstrations rather than complete standalone templates for
+production applications.
+
+======================================================================
+  6. DOCUMENTATION AND PROJECT STRUCTURE
+======================================================================
+
+----------------------------------------------------------------------
+  6.1. Documentation
+----------------------------------------------------------------------
+
+The doc directory contains documentation covering TinyCC,
+including its functionality, supported features, capabilities
+and limitations.
+
+It is recommended to review this documentation before using
+or extending the compiler.
+
+For additional technical information and assistance, the
+appropriate communities are:
+
+  - TinyCC community: compiler-related questions and issues.
+  - Cygwin community: cygwin1.dll and Cygwin runtime-related
+    questions and issues.
+
+----------------------------------------------------------------------
+  6.2. x86_64-win32-tcc
+----------------------------------------------------------------------
+
+The x86_64-win32-tcc directory contains only the compiler
+environment required for building and bootstrapping TinyCC.
+
+It is not intended to serve as the main project runtime
+environment.
+
+======================================================================
+  7. TESTING STATUS AND KNOWN LIMITATIONS
+======================================================================
+
+The current implementation has been tested in selected areas,
+including crt0.c and strace.
+
+The results are encouraging, but they do not guarantee that
+all functionality is implemented correctly or that every
+possible use case has been covered.
+
+In particular, the following areas should be considered
+when performing further testing:
+
+  - Runtime initialization and process startup.
+  - Compatibility between different Cygwin versions.
+  - Header and symbol definition consistency.
+  - Dynamic library handling.
+  - Threading and synchronization.
+  - Atomic operations.
+  - Runtime environment and directory configuration.
+
+Further testing is required before considering the implementation
+fully verified.
+
+======================================================================
+  8. FUTURE DEVELOPMENT
+======================================================================
+
+This is the current state of the project.
+
+As new versions of TinyCC and Cygwin become available, I intend
+to update the project accordingly.
+
+The implementation may also evolve over time, and its overall
+direction or scope may change depending on future requirements,
+compatibility considerations and development possibilities.
+
+The current structure and implementation should therefore be
+considered an ongoing development effort rather than a finalized
+solution.
+
+======================================================================
+  9. FEEDBACK AND ISSUE REPORTING
+======================================================================
+
+Any comments, suggestions, problems or bug reports are welcome.
+
+If you encounter unexpected behavior, compatibility issues
+or implementation errors, please provide feedback by email:
+
+  p.korcik@gmail.com
+
+Additional observations and suggestions regarding the project
+are also appreciated.
+
+======================================================================
+                         END OF CHANGELOG
+======================================================================
