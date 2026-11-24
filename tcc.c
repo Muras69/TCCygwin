@@ -31322,13 +31322,14 @@ static void pe_add_runtime(TCCState *s1, struct pe_info *pe)
     if (s1->elf_entryname) {
         pe->start_symbol = start_symbol = s1->elf_entryname;
     } else {
-#if defined __CYGWIN__
-        pe->start_symbol = start_symbol;
-#else
-        pe->start_symbol = start_symbol + 1;
-        if (!s1->leading_underscore || strchr(start_symbol, '@'))
-            ++start_symbol;
-#endif
+        if(0 == strcmp(start_symbol, "mainCRTStartup")) {
+          pe->start_symbol = start_symbol;
+        }
+        else {
+          pe->start_symbol = start_symbol + 1;
+          if (!s1->leading_underscore || strchr(start_symbol, '@'))
+              ++start_symbol;
+      }
     }
     set_global_sym(s1, start_symbol, ((void*)0), 0);
     if (0 == s1->nostdlib) {
