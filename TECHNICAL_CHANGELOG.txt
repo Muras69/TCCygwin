@@ -46,17 +46,17 @@ These replacements provide the header definitions expected by
 TinyCC and ensure compatibility with its implementation.
 
 ----------------------------------------------------------------------
-  1.2. _Optional Support
+  1.2.  snapshot
 ----------------------------------------------------------------------
 
-Support for _Optional has been reverted at the request of gz8cx4.
+Add PT_GNU_STACK segment if supported
 
 Reference information:
 
   Branch: mob
-  Commit: 70a6ab601fef06e7b66bbea662f544b4488ff8e3
+  Tree: 2bf6920099689fb7b14f2e1beb42fa893e07bb2c
   Source:
-  https://repo.or.cz/tinycc.git/snapshot/e9e9e7f6236895a32c5e905aada486bab6671e95.tar.gz
+  https://repo.or.cz/tinycc.git/snapshot/772dc70df00f53461c526dddca42b63d1b7148c7.tar.gz
 
 ----------------------------------------------------------------------
   1.3. pthread.h Modifications
